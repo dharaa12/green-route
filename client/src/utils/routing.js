@@ -1,9 +1,9 @@
-// Nominatim geocoding (OSM, free, no key)
+import { nominatimSearch } from './geo';
+
+// Geocode a free-text place to a coordinate, bounded to the NYC area.
 export async function geocode(query) {
-  const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1&countrycodes=us`;
-  const res = await fetch(url, { headers: { 'Accept-Language': 'en' } });
-  const data = await res.json();
-  if (!data.length) throw new Error(`Location not found: ${query}`);
+  const data = await nominatimSearch(query, 1);
+  if (!data.length) throw new Error(`Location not found in the NYC area: ${query}`);
   return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon), display: data[0].display_name };
 }
 

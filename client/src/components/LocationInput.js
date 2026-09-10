@@ -1,22 +1,18 @@
 import { useState, useEffect, useRef } from 'react';
-import { Search, MapPin, X } from 'lucide-react';
-
-async function searchLocations(query) {
-  if (!query || query.length < 2) return [];
-  const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=6&countrycodes=us&addressdetails=1`;
-  const res = await fetch(url, { headers: { 'Accept-Language': 'en' } });
-  return res.json();
-}
+import { MapPin, X } from 'lucide-react';
+import { nominatimSearch } from '../utils/geo';
 
 function formatSuggestion(item) {
   const a = item.address || {};
+  const primary = item.name || a.amenity || a.shop || a.tourism || a.building ||
+    a.railway || a.road;
   const parts = [
-    a.amenity || a.shop || a.tourism || a.building || a.road,
+    primary,
     a.neighbourhood || a.suburb || a.city_district,
     a.city || a.town || a.village,
     a.state,
   ].filter(Boolean);
-  return parts.join(', ') || item.display_name.split(',').slice(0, 3).join(',');
+  return [...new Set(parts)].join(', ') || item.display_name.split(',').slice(0, 3).join(',');
 }
 
 export default function LocationInput({ value, onChange, placeholder, icon: Icon, color }) {
@@ -52,7 +48,7 @@ export default function LocationInput({ value, onChange, placeholder, icon: Icon
     debounceRef.current = setTimeout(async () => {
       setLoading(true);
       try {
-        const results = await searchLocations(val);
+        const results = await nominatimSearch(val, 6);
         setSuggestions(results);
         setOpen(results.length > 0);
       } finally {
