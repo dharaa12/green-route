@@ -1,16 +1,28 @@
 import { Link } from 'react-router-dom';
-import { Leaf, Timer, Flame, Car, Bike, Train, Footprints } from 'lucide-react';
+import { Leaf, Timer, Flame, Car, Bike, Train, Bus, Ship, Footprints, Info } from 'lucide-react';
 import { formatCo2 } from '../utils/impact';
 
-const LEG_ICON = { Drive: Car, Bike: Bike, Subway: Train, Walk: Footprints };
+const LEG_ICON = {
+  walk: Footprints, drive: Car, bike: Bike,
+  subway: Train, rail: Train, tram: Train, bus: Bus, ferry: Ship, gondola: Ship,
+  transit: Train,
+};
 const MODE_ACCENT = {
   drive:   { dot: '#ef4444', text: 'text-red-600' },
   transit: { dot: '#f59e0b', text: 'text-amber-600' },
   bike:    { dot: '#22c55e', text: 'text-green-600' },
 };
 
+function legText(leg) {
+  if (leg.mode === 'walk') return 'Walk';
+  if (leg.line) return `${leg.line}`;
+  return leg.label || 'Transit';
+}
+
 export default function RouteCard({ route, selected, onSelect, onTake, taking, canLog }) {
   const accent = MODE_ACCENT[route.mode];
+  const isEstimate = route.source === 'estimate';
+
   return (
     <div
       onClick={() => onSelect(route.id)}
@@ -49,18 +61,20 @@ export default function RouteCard({ route, selected, onSelect, onTake, taking, c
         )}
       </div>
 
-      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+      <div className="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-1">
         {route.legs.map((leg, i) => {
-          const Icon = LEG_ICON[leg] || Footprints;
-          const isPrimary = leg === 'Drive' || leg === 'Bike' || leg === 'Subway';
+          const Icon = LEG_ICON[leg.mode] || Footprints;
+          const isTransit = leg.mode !== 'walk';
           return (
-            <span
-              key={i}
-              className={`inline-flex items-center gap-1 text-xs font-medium ${
-                isPrimary ? accent.text : 'text-gray-400'
-              }`}
-            >
-              <Icon size={13} /> {leg}
+            <span key={i} className="inline-flex items-center gap-1">
+              {i > 0 && <span className="text-gray-300">·</span>}
+              <span
+                className={`inline-flex items-center gap-1 text-xs font-medium ${
+                  isTransit ? accent.text : 'text-gray-400'
+                }`}
+              >
+                <Icon size={13} /> {legText(leg)}
+              </span>
             </span>
           );
         })}
@@ -79,6 +93,12 @@ export default function RouteCard({ route, selected, onSelect, onTake, taking, c
       {route.co2_saved_kg > 0 && (
         <p className="mt-2 text-xs font-medium text-green-600">
           Saves {formatCo2(route.co2_saved_kg)} CO₂ vs driving · {route.co2_reduction_pct}% less
+        </p>
+      )}
+
+      {isEstimate && (
+        <p className="mt-1.5 inline-flex items-center gap-1 text-[11px] text-gray-400">
+          <Info size={11} /> Estimated — live transit routing unavailable here
         </p>
       )}
 

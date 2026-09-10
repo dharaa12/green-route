@@ -12,6 +12,7 @@ app.use('/api/trips', require('./routes/trips'));
 app.use('/api/leaderboard', require('./routes/leaderboard'));
 app.use('/api/marketplace', require('./routes/marketplace'));
 app.use('/api/friends', require('./routes/friends'));
+app.use('/api/transit', require('./routes/transit'));
 
 app.get('/', (req, res) => res.json({ message: 'GreenRoute API running' }));
 

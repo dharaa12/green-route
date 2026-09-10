@@ -235,6 +235,7 @@ export default function MapPage() {
               color={route.color}
               weight={selectedId === route.id ? 6 : 3}
               opacity={selectedId === route.id ? 0.95 : 0.4}
+              dashArray={route.source === 'estimate' ? '6 8' : undefined}
               eventHandlers={{ click: () => setSelectedId(route.id) }}
             />
           ))}
