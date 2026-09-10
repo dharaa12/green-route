@@ -81,11 +81,10 @@ async function upsertUser(person) {
 }
 
 async function seedTrips(userId, { power }) {
-  const trips = Array.from({ length: Math.floor(power ? rand(22, 34) : rand(6, 16)) }, () => makeTrip(userId));
-  // Power users also get a genuine 7-day transit streak.
-  if (power) {
-    for (let d = 1; d <= 7; d++) trips.push(makeTrip(userId, { mode: 'transit', daysAgo: d }));
-  }
+  const trips = Array.from(
+    { length: Math.floor(power ? rand(24, 40) : rand(6, 18)) },
+    () => makeTrip(userId),
+  );
   await sb.from('trips').insert(trips);
 
   const totalPoints = trips.reduce((s, t) => s + t.points_earned, 0);
