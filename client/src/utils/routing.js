@@ -25,11 +25,35 @@ async function osrmRoute(profile, originLng, originLat, destLng, destLat) {
 
 const CO2_PER_KM = { drive: 0.21, transit: 0.089, bike: 0.0 };
 
+const MODE_META = {
+  drive:   { name: 'Direct Drive',    legs: ['Drive'] },
+  transit: { name: 'Subway + Transit', legs: ['Walk', 'Subway', 'Walk'] },
+  bike:    { name: 'Bike Route',       legs: ['Bike'] },
+};
+
 function calcCo2(distKm, mode) {
   const emitted = parseFloat((distKm * CO2_PER_KM[mode]).toFixed(3));
   const saved = parseFloat((distKm * CO2_PER_KM.drive - emitted).toFixed(3));
   const points = Math.floor(saved * 10);
   return { co2_emitted_kg: emitted, co2_saved_kg: Math.max(0, saved), points_earned: Math.max(0, points) };
+}
+
+// Tag the option set so the UI can show which route is fastest / greenest.
+export function annotateRoutes(routes) {
+  if (!routes.length) return routes;
+  const fastestId = routes.reduce((a, b) => (b.duration_min < a.duration_min ? b : a)).id;
+  const greenestId = routes.reduce((a, b) => (b.co2_emitted_kg < a.co2_emitted_kg ? b : a)).id;
+  const driveCo2 = routes.find(r => r.mode === 'drive')?.co2_emitted_kg ?? 0;
+  return routes.map(r => ({
+    ...r,
+    name: MODE_META[r.mode].name,
+    legs: MODE_META[r.mode].legs,
+    isFastest: r.id === fastestId,
+    isGreenest: r.id === greenestId,
+    co2_reduction_pct: driveCo2 > 0
+      ? Math.round(((driveCo2 - r.co2_emitted_kg) / driveCo2) * 100)
+      : 0,
+  }));
 }
 
 export async function fetchAllRoutes(origin, destination, fromCoord, toCoord) {
@@ -64,7 +88,7 @@ export async function fetchAllRoutes(origin, destination, fromCoord, toCoord) {
       id: 'transit',
       label: 'Subway / Transit',
       mode: 'transit',
-      color: '#3b82f6',
+      color: '#f59e0b',
       ...transit,
       ...calcCo2(transit.distance_km, 'transit'),
     },
