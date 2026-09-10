@@ -122,7 +122,7 @@ async function fetchTransitous(fromLat, fromLng, toLat, toLng) {
       accept: 'application/json',
       'User-Agent': 'GreenRoute/1.0 (https://github.com/dharaa12/green-route)',
     },
-    signal: AbortSignal.timeout(9000),
+    signal: AbortSignal.timeout(6000),
   });
   if (!res.ok) return null;
   const data = await res.json();
