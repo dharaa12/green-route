@@ -2,6 +2,24 @@ const express = require('express');
 const router = express.Router();
 const { requireAuth } = require('../middleware/auth');
 
+router.get('/', requireAuth, async (req, res) => {
+  const { data: friendships } = await req.supabase
+    .from('friendships')
+    .select('friend_id')
+    .eq('user_id', req.user.id);
+
+  const ids = (friendships || []).map(f => f.friend_id);
+  if (!ids.length) return res.json([]);
+
+  const { data, error } = await req.supabase
+    .from('profiles')
+    .select('id, username, avatar_url, climate_points, co2_saved_kg')
+    .in('id', ids)
+    .order('climate_points', { ascending: false });
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data || []);
+});
+
 router.post('/add', requireAuth, async (req, res) => {
   const { username } = req.body;
   if (!username) return res.status(400).json({ error: 'username required' });

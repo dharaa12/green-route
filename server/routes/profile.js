@@ -10,12 +10,18 @@ router.get('/', requireAuth, async (req, res) => {
     .single();
   if (error) return res.status(404).json({ error: 'Profile not found' });
 
-  const { data: userBadges } = await req.supabase
-    .from('user_badges')
-    .select('earned_at, badges(*)')
-    .eq('user_id', req.user.id);
+  const [{ data: allBadges }, { data: userBadges }] = await Promise.all([
+    req.supabase.from('badges').select('*').order('threshold_value', { ascending: true }),
+    req.supabase.from('user_badges').select('badge_id, earned_at').eq('user_id', req.user.id),
+  ]);
+  const earned = new Map((userBadges || []).map(u => [u.badge_id, u.earned_at]));
+  const badges = (allBadges || []).map(b => ({
+    ...b,
+    earned: earned.has(b.id),
+    earned_at: earned.get(b.id) || null,
+  }));
 
-  res.json({ ...profile, badges: userBadges?.map(ub => ({ ...ub.badges, earned_at: ub.earned_at })) || [] });
+  res.json({ ...profile, badges });
 });
 
 module.exports = router;
