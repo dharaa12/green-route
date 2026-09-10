@@ -39,17 +39,16 @@ const rand = (a, b) => a + Math.random() * (b - a);
 const pick = arr => arr[Math.floor(Math.random() * arr.length)];
 const round3 = n => Math.round(n * 1000) / 1000;
 
-function makeTrip(userId) {
-  // green-leaning mode mix
-  const mode = pick(['bike', 'transit', 'transit', 'bike', 'drive']);
-  const distance_km = round3(rand(1.5, 14));
+function makeTrip(userId, { mode, daysAgo } = {}) {
+  mode = mode || pick(['bike', 'transit', 'transit', 'transit', 'bike', 'drive']);
+  const distance_km = round3(mode === 'bike' ? rand(3, 18) : rand(1.5, 16));
   const co2_emitted_kg = round3(distance_km * CO2_PER_KM[mode]);
   const co2_saved_kg = Math.max(0, round3(distance_km * CO2_PER_KM.drive - co2_emitted_kg));
   const points_earned = Math.max(0, Math.floor(co2_saved_kg * 10));
   let o = pick(PLACES), d = pick(PLACES);
   while (d === o) d = pick(PLACES);
-  const daysAgo = Math.floor(rand(0, 18));
-  const taken_at = new Date(Date.now() - daysAgo * 864e5 - rand(0, 12) * 36e5).toISOString();
+  const ago = daysAgo == null ? Math.floor(rand(0, 26)) : daysAgo;
+  const taken_at = new Date(Date.now() - ago * 864e5 - rand(0, 12) * 36e5).toISOString();
   return { user_id: userId, origin: o, destination: d, route_type: mode,
     distance_km, co2_emitted_kg, co2_saved_kg, points_earned, taken_at };
 }
@@ -81,24 +80,18 @@ async function upsertUser(person) {
   return user.id;
 }
 
-async function seedTrips(userId) {
-  const trips = Array.from({ length: Math.floor(rand(4, 12)) }, () => makeTrip(userId));
+async function seedTrips(userId, { power }) {
+  const trips = Array.from({ length: Math.floor(power ? rand(22, 34) : rand(6, 16)) }, () => makeTrip(userId));
+  // Power users also get a genuine 7-day transit streak.
+  if (power) {
+    for (let d = 1; d <= 7; d++) trips.push(makeTrip(userId, { mode: 'transit', daysAgo: d }));
+  }
   await sb.from('trips').insert(trips);
 
   const totalPoints = trips.reduce((s, t) => s + t.points_earned, 0);
   const totalCo2 = round3(trips.reduce((s, t) => s + t.co2_saved_kg, 0));
-  const greenTrips = trips.filter(t => t.route_type !== 'drive').length;
-
   await sb.from('profiles').update({ climate_points: totalPoints, co2_saved_kg: totalCo2 }).eq('id', userId);
 
-  const { data: badges } = await sb.from('badges').select('*');
-  const toAward = (badges || []).filter(b =>
-    (b.threshold_type === 'trips' && greenTrips >= b.threshold_value) ||
-    (b.threshold_type === 'co2' && totalCo2 >= b.threshold_value) ||
-    (b.threshold_type === 'points' && totalPoints >= b.threshold_value));
-  if (toAward.length) {
-    await sb.from('user_badges').upsert(toAward.map(b => ({ user_id: userId, badge_id: b.id })));
-  }
   return { totalPoints, totalCo2 };
 }
 
@@ -113,28 +106,33 @@ async function befriend(a, b) {
   const friendUsername = friendArg > -1 ? process.argv[friendArg + 1] : null;
 
   const ids = [];
-  for (const p of PEOPLE) {
+  for (let i = 0; i < PEOPLE.length; i++) {
+    const p = PEOPLE[i];
     const id = await upsertUser(p);
-    const { totalPoints, totalCo2 } = await seedTrips(id);
+    const { totalPoints, totalCo2 } = await seedTrips(id, { power: i < 5 });
     ids.push(id);
     console.log(`  ${p.username.padEnd(16)} ${String(totalPoints).padStart(4)} pts  ${totalCo2.toFixed(1)} kg`);
   }
 
-  // each demo user gets 2-3 demo friends
+  // each demo user gets 5-6 demo friends (enough for Social Butterfly)
   for (const id of ids) {
-    const others = ids.filter(x => x !== id).sort(() => Math.random() - 0.5).slice(0, 3);
+    const others = ids.filter(x => x !== id).sort(() => Math.random() - 0.5).slice(0, 5 + Math.round(Math.random()));
     for (const o of others) await befriend(id, o);
   }
 
   if (friendUsername) {
     const { data: target } = await sb.from('profiles').select('id').eq('username', friendUsername).maybeSingle();
     if (target) {
-      for (const id of ids.slice(0, 5)) await befriend(target.id, id);
-      console.log(`\nBefriended ${friendUsername} with 5 demo users.`);
+      for (const id of ids.slice(0, 6)) await befriend(target.id, id);
+      console.log(`\nBefriended ${friendUsername} with 6 demo users.`);
     } else {
       console.log(`\n--friend: no user "${friendUsername}" found, skipped.`);
     }
   }
+
+  // award badges once everything (trips + friendships) is in place
+  const { awardBadges } = require('../lib/badges');
+  for (const id of ids) await awardBadges(sb, id);
 
   console.log(`\nDone. ${PEOPLE.length} demo users seeded.`);
   process.exit(0);

@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { requireAuth } = require('../middleware/auth');
+const { awardBadges } = require('../lib/badges');
 
 const CO2_PER_KM = { drive: 0.21, transit: 0.089, bike: 0.0 };
 
@@ -50,45 +51,9 @@ router.post('/', requireAuth, async (req, res) => {
     .update({ climate_points: newPoints, co2_saved_kg: newCo2 })
     .eq('id', req.user.id);
 
-  // Check and award badges
-  const newBadges = await checkBadges(req.supabase, req.user.id, newPoints, newCo2);
+  const newBadges = await awardBadges(req.supabase, req.user.id);
 
   res.json({ trip, points_earned, new_total_points: newPoints, new_badges: newBadges });
 });
-
-async function checkBadges(supabase, userId, totalPoints, totalCo2) {
-  // Count green trips
-  const { count: tripCount } = await supabase
-    .from('trips')
-    .select('*', { count: 'exact', head: true })
-    .eq('user_id', userId)
-    .in('route_type', ['bike', 'transit']);
-
-  const { data: allBadges } = await supabase.from('badges').select('*');
-  const { data: earned } = await supabase
-    .from('user_badges')
-    .select('badge_id')
-    .eq('user_id', userId);
-
-  const earnedIds = new Set(earned?.map(e => e.badge_id) || []);
-  const toAward = [];
-
-  for (const badge of allBadges || []) {
-    if (earnedIds.has(badge.id)) continue;
-    let qualifies = false;
-    if (badge.threshold_type === 'trips' && tripCount >= badge.threshold_value) qualifies = true;
-    if (badge.threshold_type === 'co2' && totalCo2 >= badge.threshold_value) qualifies = true;
-    if (badge.threshold_type === 'points' && totalPoints >= badge.threshold_value) qualifies = true;
-    if (qualifies) toAward.push(badge);
-  }
-
-  if (toAward.length > 0) {
-    await supabase.from('user_badges').insert(
-      toAward.map(b => ({ user_id: userId, badge_id: b.id }))
-    );
-  }
-
-  return toAward;
-}
 
 module.exports = router;

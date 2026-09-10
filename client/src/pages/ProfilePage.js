@@ -50,11 +50,18 @@ function BadgeCard({ badge }) {
       <span className="text-2xl">{badge.icon}</span>
       <p className="mt-2 text-sm font-bold text-gray-900">{badge.name}</p>
       <p className="mt-0.5 text-xs text-gray-500">{badge.description}</p>
-      <span className={`mt-2 inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-        badge.earned ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-500'
-      }`}>
-        {badge.earned ? 'Earned' : 'Locked'}
-      </span>
+      {badge.earned ? (
+        <span
+          className="mt-2 inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold"
+          style={{ color: badge.color || '#15803d', backgroundColor: (badge.color || '#15803d') + '22' }}
+        >
+          Earned
+        </span>
+      ) : (
+        <span className="mt-2 inline-block rounded-full bg-gray-200 px-2 py-0.5 text-[10px] font-semibold text-gray-500">
+          Locked
+        </span>
+      )}
     </div>
   );
 }

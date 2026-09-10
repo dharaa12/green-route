@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { supabaseAdmin, anonClient } = require('../middleware/auth');
+const { awardBadges } = require('../lib/badges');
 
 router.post('/register', async (req, res) => {
   const { email, password, username } = req.body;
@@ -30,6 +31,8 @@ router.post('/register', async (req, res) => {
     await supabaseAdmin.auth.admin.deleteUser(data.user.id);
     return res.status(500).json({ error: profileError.message });
   }
+
+  await awardBadges(supabaseAdmin, data.user.id);
 
   const { data: session, error: signInError } = await anonClient().auth.signInWithPassword({ email, password });
   if (signInError) return res.status(500).json({ error: signInError.message });
