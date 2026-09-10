@@ -81,9 +81,11 @@ export default function MarketplacePage() {
   );
   const points = profile?.climate_points || 0;
 
+  const hasMap = shown.some(i => Number.isFinite(i.lat));
+
   return (
-    <div className="mx-auto max-w-5xl px-4 pb-10">
-      <div className="flex items-center justify-between pt-8">
+    <div className="mx-auto max-w-7xl px-4 pb-6">
+      <div className="flex items-center justify-between pt-5">
         <div className="flex items-center gap-2">
           <ShoppingBag size={22} className="text-green-600" />
           <div>
@@ -96,7 +98,7 @@ export default function MarketplacePage() {
         </span>
       </div>
 
-      <div className="mt-4 flex flex-wrap gap-2">
+      <div className="mt-3 flex flex-wrap gap-2">
         {CATEGORIES.map(c => (
           <button
             key={c}
@@ -111,11 +113,12 @@ export default function MarketplacePage() {
       </div>
 
       {toast && (
-        <div className="mt-4 rounded-xl bg-green-600 px-4 py-2.5 text-sm font-medium text-white">{toast}</div>
+        <div className="mt-3 rounded-xl bg-green-600 px-4 py-2.5 text-sm font-medium text-white">{toast}</div>
       )}
 
-      <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_1.1fr]">
-        <div className="space-y-3">
+      <div className="mt-4 lg:flex lg:items-start lg:gap-5">
+        <div className="space-y-3 lg:w-[380px] lg:flex-shrink-0 lg:overflow-y-auto lg:pr-1"
+             style={{ maxHeight: 'calc(100vh - 150px)' }}>
           {loading ? (
             <p className="py-8 text-center text-sm text-gray-400">Loading…</p>
           ) : shown.length === 0 ? (
@@ -133,8 +136,11 @@ export default function MarketplacePage() {
           )}
         </div>
 
-        {shown.some(i => Number.isFinite(i.lat)) && (
-          <div className="sticky top-4 hidden h-[70vh] overflow-hidden rounded-2xl border border-gray-200 lg:block">
+        {hasMap && (
+          <div
+            className="sticky top-[68px] mt-4 hidden overflow-hidden rounded-2xl border border-gray-200 lg:mt-0 lg:block lg:flex-1"
+            style={{ height: 'calc(100vh - 150px)' }}
+          >
             <PartnerMap items={shown} />
           </div>
         )}
