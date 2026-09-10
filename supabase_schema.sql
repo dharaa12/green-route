@@ -68,6 +68,10 @@ create table if not exists marketplace_items (
   partner_name text not null,
   points_cost integer not null,
   category text,
+  value_usd text,
+  color text,
+  lat float,
+  lng float,
   image_url text,
   active boolean default true
 );
@@ -86,6 +90,11 @@ create table if not exists redemptions (
 alter table redemptions enable row level security;
 create policy "Users read own redemptions" on redemptions for select using (auth.uid() = user_id);
 create policy "Users insert own redemptions" on redemptions for insert with check (auth.uid() = user_id);
+
+-- keep redemptions when a catalog item is removed
+alter table redemptions drop constraint if exists redemptions_item_id_fkey;
+alter table redemptions add constraint redemptions_item_id_fkey
+  foreign key (item_id) references marketplace_items(id) on delete set null;
 
 -- Friendships
 create table if not exists friendships (
@@ -113,13 +122,16 @@ insert into badges (name, description, icon, threshold_type, threshold_value) va
 on conflict do nothing;
 
 -- Seed marketplace items
-insert into marketplace_items (name, description, partner_name, points_cost, category) values
-  ('Free Coffee',      'Get a free drip coffee',           'Blue Bottle Coffee',  50,  'food'),
-  ('10% Off Groceries','10% off your next purchase',       'Whole Foods Market',  75,  'grocery'),
-  ('Free Smoothie',    'Any smoothie of your choice',      'Juice Press',         60,  'food'),
-  ('Free Bike Rental', '1 hour Citi Bike rental',          'Citi Bike',           40,  'transport'),
-  ('$5 Off Order',     '$5 off orders over $20',           'Sweetgreen',          45,  'food'),
-  ('Free Pastry',      'Any pastry with coffee purchase',  'La Colombe',          35,  'food'),
-  ('10% Off Products', '10% off sustainable products',     'Package Free Shop',   80,  'shopping'),
-  ('Free Drink',       'Free kombucha or tea',             'MatchaBar',           30,  'food')
+insert into marketplace_items
+  (name, description, partner_name, points_cost, category, value_usd, color, lat, lng) values
+  ('15% off any salad',      'Show this coupon at checkout for 15% off any salad or warm bowl.', 'Sweetgreen',          5,  'food',     '$4–$7',  '#22c55e', 40.7411, -73.9897),
+  ('Free drip coffee',       'One free 12oz drip coffee, any location.',                          'Blue Bottle Coffee',  6,  'food',     '$5',     '#f97316', 40.7220, -73.9977),
+  ('Free matcha or tea',     'Any hot or iced matcha, kombucha, or tea.',                         'MatchaBar',           4,  'food',     '$5',     '#16a34a', 40.7295, -73.9880),
+  ('Free pastry with coffee','Any pastry when you buy a coffee.',                                 'La Colombe',          4,  'food',     '$4',     '#a16207', 40.7205, -74.0050),
+  ('1 free day pass',        'Redeem for a complimentary 24-hour Citi Bike day pass.',            'Citi Bike',           8,  'transit',  '$19',    '#2563eb', 40.7295, -73.9965),
+  ('$2.90 ride credit',      'One free subway or bus ride loaded to your OMNY account.',          'MTA',                 3,  'transit',  '$2.90',  '#0ea5e9', 40.7527, -73.9772),
+  ('10% off groceries',      '10% off your next grocery purchase, up to $15 off.',                'Whole Foods Market',  10, 'retail',   '$8+',    '#7c3aed', 40.7419, -74.0009),
+  ('10% off sustainable goods','10% off everything in store, zero-waste refills included.',       'Package Free Shop',   9,  'retail',   '$6+',    '#9333ea', 40.7248, -73.9971),
+  ('Free drop-in class',     'One complimentary drop-in yoga or sculpt class.',                   'CorePower Yoga',      12, 'wellness', '$25',    '#db2777', 40.7358, -73.9911),
+  ('$10 off a massage',      '$10 off any 60-minute session.',                                    'Zeel',                11, 'wellness', '$10',    '#e11d48', 40.7380, -73.9855)
 on conflict do nothing;

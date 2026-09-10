@@ -1,21 +1,61 @@
-import { useState, useEffect } from 'react';
-import { ShoppingBag, Check } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { ShoppingBag, Leaf, Check } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import PartnerMap from '../components/PartnerMap';
 
-const CATEGORY_EMOJI = { food: '🍃', grocery: '🛒', transport: '🚲', shopping: '🛍️' };
+const CATEGORIES = ['all', 'food', 'transit', 'retail', 'wellness'];
+
+function initials(name) {
+  const w = name.trim().split(/\s+/);
+  return (w.length > 1 ? w[0][0] + w[1][0] : name.slice(0, 2)).toUpperCase();
+}
+
+function ItemCard({ item, affordable, redeeming, onRedeem }) {
+  return (
+    <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+      <div className="flex items-center justify-between px-4 py-3" style={{ backgroundColor: item.color || '#22c55e' }}>
+        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white/25 text-sm font-bold text-white">
+          {initials(item.partner_name)}
+        </span>
+        <span className="rounded-full bg-white/25 px-2 py-0.5 text-[11px] font-semibold capitalize text-white">
+          {item.category}
+        </span>
+      </div>
+      <div className="p-4">
+        <p className="text-xs text-gray-500">{item.partner_name}</p>
+        <p className="font-bold text-gray-900">{item.name}</p>
+        <p className="mt-1 text-sm text-gray-600">{item.description}</p>
+        <p className="mt-2 flex items-center gap-1 text-sm">
+          <Leaf size={13} className="text-green-600" />
+          <span className="font-semibold text-green-700">{item.points_cost} pts</span>
+          {item.value_usd && <span className="text-gray-400"> · worth {item.value_usd}</span>}
+        </p>
+        <button
+          onClick={() => onRedeem(item)}
+          disabled={!affordable || redeeming}
+          className={`mt-3 w-full rounded-xl py-2 text-sm font-semibold transition-colors ${
+            affordable ? 'bg-green-600 text-white hover:bg-green-700' : 'cursor-not-allowed bg-gray-100 text-gray-400'
+          } disabled:opacity-60`}
+        >
+          {redeeming ? 'Redeeming…' : affordable ? (
+            <span className="flex items-center justify-center gap-1.5"><Check size={14} /> Redeem</span>
+          ) : 'Not enough points'}
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export default function MarketplacePage() {
   const { authFetch, profile, updatePoints } = useApp();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [cat, setCat] = useState('all');
   const [redeeming, setRedeeming] = useState(null);
   const [toast, setToast] = useState('');
 
   useEffect(() => {
-    authFetch('/api/marketplace')
-      .then(setItems)
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    authFetch('/api/marketplace').then(setItems).catch(() => {}).finally(() => setLoading(false));
   }, [authFetch]);
 
   async function handleRedeem(item) {
@@ -26,7 +66,7 @@ export default function MarketplacePage() {
         body: JSON.stringify({ item_id: item.id }),
       });
       updatePoints(data.new_total_points, undefined);
-      setToast(`Redeemed "${item.name}" at ${item.partner_name}! 🎉`);
+      setToast(`Redeemed "${item.name}" at ${item.partner_name}`);
     } catch (err) {
       setToast(err.message);
     } finally {
@@ -35,73 +75,69 @@ export default function MarketplacePage() {
     }
   }
 
-  const canAfford = item => (profile?.climate_points || 0) >= item.points_cost;
+  const shown = useMemo(
+    () => (cat === 'all' ? items : items.filter(i => i.category === cat)),
+    [items, cat],
+  );
+  const points = profile?.climate_points || 0;
 
   return (
-    <div className="max-w-2xl mx-auto pb-8">
-      <div className="bg-white border-b border-gray-200 p-4 pt-10">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <ShoppingBag className="text-green-600" size={24} />
-            <h1 className="text-xl font-bold text-gray-800">Marketplace</h1>
+    <div className="mx-auto max-w-5xl px-4 pb-10">
+      <div className="flex items-center justify-between pt-8">
+        <div className="flex items-center gap-2">
+          <ShoppingBag size={22} className="text-green-600" />
+          <div>
+            <h1 className="text-xl font-bold text-gray-900">Marketplace</h1>
+            <p className="text-sm text-gray-500">Spend climate points at NYC partners</p>
           </div>
-          {profile && (
-            <span className="bg-green-100 text-green-700 font-semibold text-sm px-3 py-1 rounded-full">
-              {profile.climate_points} pts available
-            </span>
-          )}
         </div>
-        <p className="text-sm text-gray-500 mt-1">Redeem your climate points at partner cafes & stores</p>
+        <span className="flex items-center gap-1 rounded-full bg-green-100 px-3 py-1 text-sm font-semibold text-green-700">
+          <Leaf size={13} /> {points} pts
+        </span>
+      </div>
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        {CATEGORIES.map(c => (
+          <button
+            key={c}
+            onClick={() => setCat(c)}
+            className={`rounded-full px-3.5 py-1.5 text-sm font-medium capitalize transition-colors ${
+              cat === c ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            {c}
+          </button>
+        ))}
       </div>
 
       {toast && (
-        <div className="mx-4 mt-4 bg-green-600 text-white px-4 py-3 rounded-xl text-sm font-medium">
-          {toast}
-        </div>
+        <div className="mt-4 rounded-xl bg-green-600 px-4 py-2.5 text-sm font-medium text-white">{toast}</div>
       )}
 
-      <div className="p-4 grid grid-cols-1 gap-3">
-        {loading ? (
-          <p className="text-center text-gray-400 py-8">Loading…</p>
-        ) : items.map(item => {
-          const affordable = canAfford(item);
-          return (
-            <div key={item.id} className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-              <div className="p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <span className="text-3xl">{CATEGORY_EMOJI[item.category] || '🌿'}</span>
-                    <div>
-                      <p className="font-semibold text-gray-800">{item.name}</p>
-                      <p className="text-xs text-gray-500">{item.partner_name}</p>
-                    </div>
-                  </div>
-                  <span className={`text-sm font-bold px-2 py-1 rounded-full flex-shrink-0 ${affordable ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                    {item.points_cost} pts
-                  </span>
-                </div>
-                <p className="text-sm text-gray-600 mt-2">{item.description}</p>
-                <button
-                  onClick={() => handleRedeem(item)}
-                  disabled={!affordable || redeeming === item.id}
-                  className={`mt-3 w-full py-2 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 transition-colors ${
-                    affordable
-                      ? 'bg-green-600 hover:bg-green-700 text-white'
-                      : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                  } disabled:opacity-60`}
-                >
-                  {redeeming === item.id ? (
-                    'Redeeming…'
-                  ) : affordable ? (
-                    <><Check size={14} /> Redeem</>
-                  ) : (
-                    'Not enough points'
-                  )}
-                </button>
-              </div>
-            </div>
-          );
-        })}
+      <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_1.1fr]">
+        <div className="space-y-3">
+          {loading ? (
+            <p className="py-8 text-center text-sm text-gray-400">Loading…</p>
+          ) : shown.length === 0 ? (
+            <p className="py-8 text-center text-sm text-gray-400">Nothing in this category yet.</p>
+          ) : (
+            shown.map(item => (
+              <ItemCard
+                key={item.id}
+                item={item}
+                affordable={points >= item.points_cost}
+                redeeming={redeeming === item.id}
+                onRedeem={handleRedeem}
+              />
+            ))
+          )}
+        </div>
+
+        {shown.some(i => Number.isFinite(i.lat)) && (
+          <div className="sticky top-4 hidden h-[70vh] overflow-hidden rounded-2xl border border-gray-200 lg:block">
+            <PartnerMap items={shown} />
+          </div>
+        )}
       </div>
     </div>
   );
