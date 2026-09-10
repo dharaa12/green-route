@@ -20,7 +20,7 @@ router.post('/', requireAuth, async (req, res) => {
   if (!origin || !destination || !route_type || !distance_km) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
-  if (!CO2_PER_KM[route_type]) {
+  if (!(route_type in CO2_PER_KM)) {
     return res.status(400).json({ error: 'Invalid route_type' });
   }
 
