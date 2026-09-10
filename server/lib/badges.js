@@ -34,6 +34,7 @@ function qualifies(badge, s) {
     case 'signup':        return true;
     case 'points':        return s.points >= badge.threshold_value;
     case 'co2':           return s.co2_kg >= badge.threshold_value;
+    case 'trips':         // legacy alias
     case 'green_trips':   return s.green_trips >= badge.threshold_value;
     case 'bike_km':       return s.bike_km >= badge.threshold_value;
     case 'subway_streak': return s.subway_streak >= badge.threshold_value;
