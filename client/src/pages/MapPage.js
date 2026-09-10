@@ -27,7 +27,7 @@ function FitBounds({ routes }) {
     const pts = routes
       .flatMap(r => r.polyline || [])
       .filter(p => Array.isArray(p) && p.length === 2 && Number.isFinite(p[0]) && Number.isFinite(p[1]));
-    if (pts.length >= 2) map.fitBounds(pts, { padding: [40, 40] });
+    if (pts.length >= 2) map.fitBounds(pts, { padding: [50, 50], maxZoom: 15 });
   }, [routes, map]);
   return null;
 }
