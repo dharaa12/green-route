@@ -24,8 +24,10 @@ function FitBounds({ routes }) {
   const map = useMap();
   useEffect(() => {
     if (!routes.length) return;
-    const allPoints = routes.flatMap(r => r.polyline);
-    if (allPoints.length) map.fitBounds(allPoints, { padding: [40, 40] });
+    const pts = routes
+      .flatMap(r => r.polyline || [])
+      .filter(p => Array.isArray(p) && p.length === 2 && Number.isFinite(p[0]) && Number.isFinite(p[1]));
+    if (pts.length >= 2) map.fitBounds(pts, { padding: [40, 40] });
   }, [routes, map]);
   return null;
 }
@@ -230,12 +232,14 @@ export default function MapPage() {
           />
           {routes.map(route => (
             <Polyline
-              key={route.id}
+              key={`${route.id}-${selectedId === route.id}`}
               positions={route.polyline}
-              color={route.color}
-              weight={selectedId === route.id ? 6 : 3}
-              opacity={selectedId === route.id ? 0.95 : 0.4}
-              dashArray={route.source === 'estimate' ? '6 8' : undefined}
+              pathOptions={{
+                color: route.color,
+                weight: selectedId === route.id ? 6 : 3,
+                opacity: selectedId === route.id ? 0.95 : 0.4,
+                dashArray: route.source === 'estimate' ? '6 8' : undefined,
+              }}
               eventHandlers={{ click: () => setSelectedId(route.id) }}
             />
           ))}

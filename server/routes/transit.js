@@ -1,14 +1,25 @@
 const express = require('express');
 const router = express.Router();
 
-const NAVITIA_TOKEN = process.env.NAVITIA_TOKEN;
-const TRANSIT_CO2_PER_KM = 0.089; // fallback factor (kg/km), ~US transit average
+// Transitous — a free, community-run MOTIS routing service running on open
+// GTFS feeds (incl. the MTA's). No API key.
+const MOTIS_BASE = 'https://api.transitous.org/api/v1';
 
-// Small in-memory cache so we stay well under the free-tier rate limit.
+// Per-passenger-km CO2 (kg). Transit is grid/diesel powered; walking is zero.
+const CO2_PER_KM = { subway: 0.04, tram: 0.04, rail: 0.05, bus: 0.10, ferry: 0.12, transit: 0.06 };
+const TRANSIT_FALLBACK_CO2_PER_KM = 0.06;
+
+const MODE_MAP = {
+  WALK: 'walk', SUBWAY: 'subway', METRO: 'subway', TRAM: 'tram',
+  BUS: 'bus', TROLLEYBUS: 'bus', COACH: 'bus',
+  RAIL: 'rail', REGIONAL_RAIL: 'rail', HIGHSPEED_RAIL: 'rail', LONG_DISTANCE: 'rail',
+  FERRY: 'ferry', GONDOLA: 'transit', CABLE_CAR: 'transit', FUNICULAR: 'transit',
+};
+
+// In-memory cache to stay light on the shared service.
 const cache = new Map();
 const TTL_MS = 10 * 60 * 1000;
-const key = (a, b, c, d) => [a, b, c, d].map(n => Number(n).toFixed(4)).join(',');
-
+const cacheKey = (...n) => n.map(x => Number(x).toFixed(4)).join(',');
 function fromCache(k) {
   const hit = cache.get(k);
   if (hit && Date.now() - hit.t < TTL_MS) return hit.v;
@@ -20,90 +31,104 @@ function toCache(k, v) {
   if (cache.size > 500) cache.delete(cache.keys().next().value);
 }
 
-const PHYSICAL_MODE = {
-  Metro: 'subway', Subway: 'subway', Tramway: 'tram', 'Local Train': 'rail',
-  'Long Distance Train': 'rail', Train: 'rail', 'Rail Replacement Bus': 'bus',
-  Bus: 'bus', 'Bus Rapid Transit': 'bus', Coach: 'bus', Ferry: 'ferry',
-  'Suspended Cable Car': 'gondola', Funicular: 'rail', Shuttle: 'bus',
-};
+function decodePolyline(str, precision = 5) {
+  const factor = Math.pow(10, precision);
+  let index = 0, lat = 0, lng = 0;
+  const out = [];
+  while (index < str.length) {
+    let shift = 0, result = 0, byte;
+    do { byte = str.charCodeAt(index++) - 63; result |= (byte & 0x1f) << shift; shift += 5; } while (byte >= 0x20);
+    lat += (result & 1) ? ~(result >> 1) : (result >> 1);
+    shift = 0; result = 0;
+    do { byte = str.charCodeAt(index++) - 63; result |= (byte & 0x1f) << shift; shift += 5; } while (byte >= 0x20);
+    lng += (result & 1) ? ~(result >> 1) : (result >> 1);
+    out.push([lat / factor, lng / factor]);
+  }
+  return out;
+}
 
-function navitiaLegs(sections) {
+function haversineKm(a, b) {
+  const R = 6371, toRad = d => (d * Math.PI) / 180;
+  const dLat = toRad(b[0] - a[0]);
+  const dLng = toRad(b[1] - a[1]);
+  const h = Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(a[0])) * Math.cos(toRad(b[0])) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+function polylineKm(pts) {
+  let km = 0;
+  for (let i = 1; i < pts.length; i++) km += haversineKm(pts[i - 1], pts[i]);
+  return km;
+}
+
+function buildFromItinerary(it) {
   const legs = [];
-  for (const s of sections) {
-    if (s.type === 'street_network' || s.type === 'transfer' || s.type === 'crow_fly') {
-      if (s.mode === 'walking' || s.type === 'transfer') {
-        legs.push({ mode: 'walk', label: 'Walk', duration_min: Math.round((s.duration || 0) / 60) });
-      }
-    } else if (s.type === 'public_transport') {
-      const di = s.display_informations || {};
-      const mode = PHYSICAL_MODE[di.physical_mode] || PHYSICAL_MODE[di.commercial_mode] || 'transit';
+  let polyline = [];
+  let co2 = 0;
+  let distanceKm = 0;
+
+  for (const l of it.legs) {
+    const mode = MODE_MAP[l.mode] || 'transit';
+    const pts = l.legGeometry?.points
+      ? decodePolyline(l.legGeometry.points, l.legGeometry.precision || 5)
+      : [];
+    if (pts.length) polyline = polyline.concat(pts);
+
+    const km = polylineKm(pts);
+    distanceKm += km;
+    if (mode !== 'walk') co2 += km * (CO2_PER_KM[mode] || CO2_PER_KM.transit);
+
+    if (mode === 'walk') {
+      legs.push({ mode: 'walk', label: 'Walk', duration_min: Math.round((l.duration || 0) / 60) });
+    } else {
       legs.push({
         mode,
-        label: di.label || di.commercial_mode || 'Transit',
-        line: di.label || null,
-        duration_min: Math.round((s.duration || 0) / 60),
+        label: l.routeShortName || l.routeLongName || mode,
+        line: l.routeShortName || null,
+        color: l.routeColor ? `#${l.routeColor}` : null,
+        from: l.from?.name || null,
+        duration_min: Math.round((l.duration || 0) / 60),
       });
     }
   }
-  // Merge consecutive walk legs (transfer + street network)
-  return legs.reduce((acc, leg) => {
+
+  // Merge consecutive walk legs (a transfer often splits into two).
+  const merged = legs.reduce((acc, leg) => {
     const prev = acc[acc.length - 1];
-    if (prev && prev.mode === 'walk' && leg.mode === 'walk') {
-      prev.duration_min += leg.duration_min;
-    } else {
-      acc.push(leg);
-    }
+    if (prev && prev.mode === 'walk' && leg.mode === 'walk') prev.duration_min += leg.duration_min;
+    else acc.push(leg);
     return acc;
   }, []);
-}
-
-function navitiaPolyline(sections) {
-  const pts = [];
-  for (const s of sections) {
-    const coords = s.geojson?.coordinates;
-    if (Array.isArray(coords)) {
-      for (const [lng, lat] of coords) pts.push([lat, lng]);
-    }
-  }
-  return pts;
-}
-
-async function fetchNavitia(fromLat, fromLng, toLat, toLng) {
-  if (!NAVITIA_TOKEN) return null;
-  const params = new URLSearchParams({
-    from: `${fromLng};${fromLat}`,
-    to: `${toLng};${toLat}`,
-    data_freshness: 'base_schedule',
-    max_nb_journeys: '1',
-    'first_section_mode[]': 'walking',
-    'last_section_mode[]': 'walking',
-  });
-  const url = `https://api.navitia.io/v1/journeys?${params}`;
-  const auth = Buffer.from(`${NAVITIA_TOKEN}:`).toString('base64');
-
-  const res = await fetch(url, { headers: { Authorization: `Basic ${auth}` } });
-  if (!res.ok) return null;
-  const data = await res.json();
-
-  const journey = (data.journeys || []).find(j => (j.sections || []).some(s => s.type === 'public_transport'));
-  if (!journey) return null;
-
-  const polyline = navitiaPolyline(journey.sections);
-  const distance_km = journey.distances
-    ? Number(((Object.values(journey.distances).reduce((a, b) => a + b, 0)) / 1000).toFixed(2))
-    : null;
 
   return {
-    source: 'navitia',
-    duration_min: Math.round(journey.duration / 60),
-    distance_km,
-    co2_emitted_kg: journey.co2_emission
-      ? Number((journey.co2_emission.value / 1000).toFixed(3))
-      : null,
-    transfers: journey.nb_transfers ?? 0,
-    legs: navitiaLegs(journey.sections),
+    source: 'transitous',
+    duration_min: Math.round(it.duration / 60),
+    distance_km: Number(distanceKm.toFixed(2)),
+    co2_emitted_kg: Number(co2.toFixed(3)),
+    transfers: it.transfers ?? Math.max(0, merged.filter(l => l.mode !== 'walk').length - 1),
+    legs: merged,
     polyline,
   };
+}
+
+async function fetchTransitous(fromLat, fromLng, toLat, toLng) {
+  const params = new URLSearchParams({
+    fromPlace: `${fromLat},${fromLng}`,
+    toPlace: `${toLat},${toLng}`,
+    time: new Date().toISOString(),
+  });
+  const res = await fetch(`${MOTIS_BASE}/plan?${params}`, {
+    headers: {
+      accept: 'application/json',
+      'User-Agent': 'GreenRoute/1.0 (https://github.com/dharaa12/green-route)',
+    },
+    signal: AbortSignal.timeout(9000),
+  });
+  if (!res.ok) return null;
+  const data = await res.json();
+  const withTransit = (data.itineraries || []).find(it =>
+    (it.legs || []).some(l => l.mode !== 'WALK'));
+  return withTransit ? buildFromItinerary(withTransit) : null;
 }
 
 function estimate({ driveKm, driveMin }) {
@@ -112,7 +137,7 @@ function estimate({ driveKm, driveMin }) {
     source: 'estimate',
     duration_min: driveMin ? Math.round(driveMin * 1.15) : null,
     distance_km: km,
-    co2_emitted_kg: km != null ? Number((km * TRANSIT_CO2_PER_KM).toFixed(3)) : null,
+    co2_emitted_kg: km != null ? Number((km * TRANSIT_FALLBACK_CO2_PER_KM).toFixed(3)) : null,
     transfers: null,
     legs: [{ mode: 'transit', label: 'Public transit', duration_min: null }],
     polyline: null,
@@ -125,15 +150,15 @@ router.get('/', async (req, res) => {
     return res.status(400).json({ error: 'fromLat, fromLng, toLat, toLng are required' });
   }
 
-  const k = key(fromLat, fromLng, toLat, toLng);
+  const k = cacheKey(fromLat, fromLng, toLat, toLng);
   const cached = fromCache(k);
   if (cached) return res.json(cached);
 
   let result = null;
   try {
-    result = await fetchNavitia(fromLat, fromLng, toLat, toLng);
+    result = await fetchTransitous(fromLat, fromLng, toLat, toLng);
   } catch (e) {
-    console.error('navitia error:', e.message);
+    console.error('transitous error:', e.message);
   }
   if (!result) result = estimate({ driveKm: Number(driveKm), driveMin: Number(driveMin) });
 
