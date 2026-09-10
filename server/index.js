@@ -1,4 +1,7 @@
-require('dotenv').config({ path: require('path').join(__dirname, '.env') });
+// Local dev loads .env; hosted platforms inject env vars directly.
+if (!process.env.SUPABASE_URL) {
+  require('dotenv').config({ path: require('path').join(__dirname, '.env') });
+}
 const express = require('express');
 const cors = require('cors');
 
@@ -21,5 +24,10 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: err.message || 'Internal server error' });
 });
 
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+// Run a real server locally; on Vercel the app is imported as a serverless handler.
+if (require.main === module) {
+  const PORT = process.env.PORT || 5000;
+  app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+}
+
+module.exports = app;
