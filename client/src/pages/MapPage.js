@@ -1,11 +1,16 @@
 import { useState, useEffect } from 'react';
 import { MapContainer, TileLayer, Polyline, Marker, useMap } from 'react-leaflet';
 import L from 'leaflet';
-import { Search, Car, Bike, Train, Footprints, Leaf, Wind, Clock, Ruler, MapPin } from 'lucide-react';
+import { Search, Car, Bike, Train, Footprints, Leaf, Wind, Clock, Ruler, MapPin, LocateFixed } from 'lucide-react';
 import { fetchAllRoutes } from '../utils/routing';
+import { getUserCoord, reverseGeocode } from '../utils/geo';
 import { useApp } from '../context/AppContext';
 import { Link } from 'react-router-dom';
 import LocationInput from '../components/LocationInput';
+
+function shortPlace(displayName) {
+  return displayName ? displayName.split(',').slice(0, 3).join(', ').trim() : 'My location';
+}
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -24,6 +29,14 @@ function FitBounds({ routes }) {
   return null;
 }
 
+function Recenter({ coord }) {
+  const map = useMap();
+  useEffect(() => {
+    if (coord) map.setView([coord.lat, coord.lng], 13);
+  }, [coord, map]);
+  return null;
+}
+
 const MODE_CONFIG = {
   drive:   { icon: Car,        color: '#ef4444', label: 'Drive',          bg: 'bg-red-50',    text: 'text-red-600',   border: 'border-red-400' },
   transit: { icon: Train,      color: '#f59e0b', label: 'Subway/Transit', bg: 'bg-amber-50',  text: 'text-amber-600', border: 'border-amber-400' },
@@ -31,7 +44,7 @@ const MODE_CONFIG = {
 };
 
 export default function MapPage() {
-  const { profile, authFetch, session, updatePoints } = useApp();
+  const { authFetch, session, updatePoints } = useApp();
   const [from, setFrom] = useState({ label: '', coord: null });
   const [to, setTo] = useState({ label: '', coord: null });
   const [routes, setRoutes] = useState([]);
@@ -42,6 +55,39 @@ export default function MapPage() {
   const [taking, setTaking] = useState(false);
   const [error, setError] = useState('');
   const [toast, setToast] = useState('');
+  const [userCoord, setUserCoord] = useState(null);
+  const [locating, setLocating] = useState(false);
+
+  async function locateMe({ refresh = false, prefill = true } = {}) {
+    setLocating(true);
+    try {
+      const coord = await getUserCoord({ refresh });
+      if (!coord) {
+        if (refresh) setError('Location unavailable. Enable location access for this site and try again.');
+        return;
+      }
+      setUserCoord(coord);
+      if (prefill) {
+        const rev = await reverseGeocode(coord);
+        setFrom(f => ({ label: shortPlace(rev?.display_name), coord }));
+      }
+    } finally {
+      setLocating(false);
+    }
+  }
+
+  // On first load, offer to use the visitor's location to bias search + prefill origin.
+  useEffect(() => {
+    let cancelled = false;
+    getUserCoord().then(async (coord) => {
+      if (cancelled || !coord) return;
+      setUserCoord(coord);
+      const rev = await reverseGeocode(coord);
+      if (cancelled) return;
+      setFrom(f => (f.label ? f : { label: shortPlace(rev?.display_name), coord }));
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   async function handleSearch(e) {
     e.preventDefault();
@@ -95,8 +141,6 @@ export default function MapPage() {
     }
   }
 
-  const selectedRoute = routes.find(r => r.id === selectedId);
-
   return (
     <div className="flex" style={{ height: 'calc(100vh - 56px)' }}>
       {/* Sidebar */}
@@ -108,15 +152,24 @@ export default function MapPage() {
             <LocationInput
               value={from.label}
               onChange={(label, coord) => setFrom({ label, coord: coord || null })}
-              placeholder="From — e.g. Times Square, NYC"
+              placeholder="From — address, place, or station"
               icon={MapPin}
               color="#22c55e"
             />
+            <button
+              type="button"
+              onClick={() => locateMe({ refresh: true })}
+              disabled={locating}
+              className="flex items-center gap-1.5 text-xs font-medium text-green-600 hover:text-green-700 disabled:opacity-50 ml-1"
+            >
+              <LocateFixed size={12} />
+              {locating ? 'Locating…' : 'Use my current location'}
+            </button>
             <div className="w-px h-3 bg-gray-200 ml-4" />
             <LocationInput
               value={to.label}
               onChange={(label, coord) => setTo({ label, coord: coord || null })}
-              placeholder="To — e.g. Brooklyn Bridge, NYC"
+              placeholder="To — address, place, or station"
               icon={MapPin}
               color="#ef4444"
             />
@@ -250,6 +303,7 @@ export default function MapPage() {
           ))}
           {fromCoord && <Marker position={fromCoord} />}
           {toCoord && <Marker position={toCoord} />}
+          {routes.length === 0 && <Recenter coord={userCoord} />}
           <FitBounds routes={routes} />
         </MapContainer>
 

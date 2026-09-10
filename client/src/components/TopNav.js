@@ -27,7 +27,7 @@ export default function TopNav() {
           <Leaf size={18} />
         </div>
         <div className="hidden sm:block">
-          <p className="font-bold text-gray-900 text-sm leading-tight">NYC GreenRoute</p>
+          <p className="font-bold text-gray-900 text-sm leading-tight">GreenRoute</p>
           <p className="text-gray-400 text-xs leading-tight">Multi-modal · Carbon-aware</p>
         </div>
       </Link>

@@ -1,9 +1,9 @@
 import { nominatimSearch } from './geo';
 
-// Geocode a free-text place to a coordinate, bounded to the NYC area.
+// Geocode a free-text place to a coordinate (results near the user preferred).
 export async function geocode(query) {
   const data = await nominatimSearch(query, 1);
-  if (!data.length) throw new Error(`Location not found in the NYC area: ${query}`);
+  if (!data.length) throw new Error(`Location not found: ${query}`);
   return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon), display: data[0].display_name };
 }
 
