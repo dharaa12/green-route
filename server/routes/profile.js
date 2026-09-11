@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { requireAuth } = require('../middleware/auth');
+const { awardBadges } = require('../lib/badges');
 
 router.get('/', requireAuth, async (req, res) => {
   const { data: profile, error } = await req.supabase
@@ -9,6 +10,9 @@ router.get('/', requireAuth, async (req, res) => {
     .eq('id', req.user.id)
     .single();
   if (error) return res.status(404).json({ error: 'Profile not found' });
+
+  // Self-healing: catch up any badges earned since the last trip/friend action.
+  await awardBadges(req.supabase, req.user.id).catch(() => {});
 
   const [{ data: allBadges }, { data: userBadges }] = await Promise.all([
     req.supabase.from('badges').select('*').order('threshold_value', { ascending: true }),
