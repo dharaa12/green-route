@@ -54,7 +54,7 @@ export default function TopNav() {
       </nav>
 
       {/* Auth */}
-      <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+      <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
         {session && profile ? (
           <>
             <span className="bg-green-100 text-green-700 text-xs font-semibold px-2 py-1 rounded-full flex items-center gap-1">
@@ -69,7 +69,11 @@ export default function TopNav() {
             >
               {profile.username[0].toUpperCase()}
             </Link>
-            <button onClick={handleLogout} aria-label="Log out" className="text-gray-400 hover:text-gray-600 flex-shrink-0">
+            <button
+              onClick={handleLogout}
+              aria-label="Log out"
+              className="text-gray-400 hover:text-gray-600 hover:bg-gray-50 flex-shrink-0 p-1.5 rounded-lg transition-colors"
+            >
               <LogOut size={16} />
             </button>
           </>
