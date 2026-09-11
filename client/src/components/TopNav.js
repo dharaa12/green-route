@@ -1,12 +1,11 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Map, ShoppingBag, Trophy, User, Leaf, LogOut } from 'lucide-react';
+import { Map, ShoppingBag, Trophy, Leaf, LogOut } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
 const tabs = [
   { to: '/', icon: Map, label: 'Routes' },
   { to: '/marketplace', icon: ShoppingBag, label: 'Marketplace' },
   { to: '/leaderboard', icon: Trophy, label: 'Leaderboard' },
-  { to: '/profile', icon: User, label: 'Profile' },
 ];
 
 export default function TopNav() {
@@ -61,9 +60,15 @@ export default function TopNav() {
             <span className="bg-green-100 text-green-700 text-xs font-semibold px-2 py-1 rounded-full flex items-center gap-1">
               <Leaf size={11} /> {profile.climate_points}<span className="hidden sm:inline">&nbsp;pts</span>
             </span>
-            <div className="w-8 h-8 rounded-full bg-green-600 text-white flex items-center justify-center font-bold text-sm flex-shrink-0">
+            <Link
+              to="/profile"
+              aria-label="Profile"
+              className={`w-8 h-8 rounded-full bg-green-600 text-white flex items-center justify-center font-bold text-sm flex-shrink-0 transition-shadow ${
+                pathname === '/profile' ? 'ring-2 ring-green-300 ring-offset-1' : 'hover:ring-2 hover:ring-green-200 hover:ring-offset-1'
+              }`}
+            >
               {profile.username[0].toUpperCase()}
-            </div>
+            </Link>
             <button onClick={handleLogout} aria-label="Log out" className="text-gray-400 hover:text-gray-600 flex-shrink-0">
               <LogOut size={16} />
             </button>
