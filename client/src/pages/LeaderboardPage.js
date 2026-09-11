@@ -101,8 +101,9 @@ export default function LeaderboardPage() {
   const podium = tab === 'global' ? entries.slice(0, 3) : [];
   const podiumOrder = podium.length === 3 ? [podium[1], podium[0], podium[2]] : podium;
 
+  const splitColumns = entries.length > 6;
   const mid = Math.ceil(entries.length / 2);
-  const columns = [entries.slice(0, mid), entries.slice(mid)];
+  const columns = splitColumns ? [entries.slice(0, mid), entries.slice(mid)] : [entries];
 
   return (
     <div className="mx-auto max-w-4xl px-4 pb-10">
@@ -157,7 +158,7 @@ export default function LeaderboardPage() {
           {tab === 'friends' ? 'Add friends to see their ranking.' : 'No data yet.'}
         </p>
       ) : (
-        <div className="mt-4 sm:grid sm:grid-cols-2 sm:gap-x-4">
+        <div className={splitColumns ? 'mt-4 sm:grid sm:grid-cols-2 sm:gap-x-4' : 'mx-auto mt-4 max-w-md'}>
           {columns.map((col, i) => (
             <div key={i} className="space-y-2">
               {col.map(e => (
