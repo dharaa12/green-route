@@ -1,9 +1,10 @@
 const express = require('express');
 const router = express.Router();
-const { requireAuth } = require('../middleware/auth');
+const { requireAuth, supabaseAdmin } = require('../middleware/auth');
 
-router.get('/', requireAuth, async (req, res) => {
-  const { data, error } = await req.supabase
+// Public — browsing the catalog doesn't require an account, only redeeming does.
+router.get('/', async (req, res) => {
+  const { data, error } = await supabaseAdmin
     .from('marketplace_items')
     .select('*')
     .eq('active', true)

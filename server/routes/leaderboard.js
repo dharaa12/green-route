@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { requireAuth } = require('../middleware/auth');
+const { requireAuth, supabaseAdmin } = require('../middleware/auth');
 
 const SELECT = 'id, username, avatar_url, climate_points, co2_saved_kg, user_badges(badges(icon))';
 
@@ -15,8 +15,10 @@ function rank(rows) {
   });
 }
 
-router.get('/', requireAuth, async (req, res) => {
-  const { data, error } = await req.supabase
+// Public — the global leaderboard is browsable without an account; only
+// the friends view (below) needs to know who you are.
+router.get('/', async (req, res) => {
+  const { data, error } = await supabaseAdmin
     .from('profiles')
     .select(SELECT)
     .order('co2_saved_kg', { ascending: false })

@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ShoppingBag, Leaf, Check, List, Map as MapIcon } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import PartnerMap from '../components/PartnerMap';
@@ -10,7 +11,8 @@ function initials(name) {
   return (w.length > 1 ? w[0][0] + w[1][0] : name.slice(0, 2)).toUpperCase();
 }
 
-function ItemCard({ item, affordable, redeeming, onRedeem }) {
+function ItemCard({ item, loggedIn, affordable, redeeming, onRedeem, onSignInRequired }) {
+  const canRedeem = loggedIn && affordable;
   return (
     <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
       <div className="flex items-center justify-between px-4 py-3" style={{ backgroundColor: item.color || '#22c55e' }}>
@@ -31,13 +33,15 @@ function ItemCard({ item, affordable, redeeming, onRedeem }) {
           {item.value_usd && <span className="text-gray-400"> · worth {item.value_usd}</span>}
         </p>
         <button
-          onClick={() => onRedeem(item)}
-          disabled={!affordable || redeeming}
+          onClick={() => (loggedIn ? onRedeem(item) : onSignInRequired())}
+          disabled={(loggedIn && !affordable) || redeeming}
           className={`mt-3 w-full rounded-xl py-2 text-sm font-semibold transition-colors ${
-            affordable ? 'bg-green-600 text-white hover:bg-green-700' : 'cursor-not-allowed bg-gray-100 text-gray-400'
+            canRedeem || !loggedIn ? 'bg-green-600 text-white hover:bg-green-700' : 'cursor-not-allowed bg-gray-100 text-gray-400'
           } disabled:opacity-60`}
         >
-          {redeeming ? 'Redeeming…' : affordable ? (
+          {redeeming ? 'Redeeming…' : !loggedIn ? (
+            'Sign in to redeem'
+          ) : affordable ? (
             <span className="flex items-center justify-center gap-1.5"><Check size={14} /> Redeem</span>
           ) : 'Not enough points'}
         </button>
@@ -47,7 +51,8 @@ function ItemCard({ item, affordable, redeeming, onRedeem }) {
 }
 
 export default function MarketplacePage() {
-  const { authFetch, profile, updatePoints } = useApp();
+  const { authFetch, session, profile, updatePoints } = useApp();
+  const navigate = useNavigate();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [cat, setCat] = useState('all');
@@ -94,9 +99,18 @@ export default function MarketplacePage() {
             <p className="text-sm text-gray-500">Spend climate points at NYC partners</p>
           </div>
         </div>
-        <span className="flex flex-shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-green-100 px-3 py-1 text-sm font-semibold text-green-700">
-          <Leaf size={13} /> {points} pts
-        </span>
+        {session ? (
+          <span className="flex flex-shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-green-100 px-3 py-1 text-sm font-semibold text-green-700">
+            <Leaf size={13} /> {points} pts
+          </span>
+        ) : (
+          <button
+            onClick={() => navigate('/login')}
+            className="flex-shrink-0 whitespace-nowrap rounded-full bg-green-600 px-3.5 py-1.5 text-sm font-semibold text-white hover:bg-green-700"
+          >
+            Sign in to earn points
+          </button>
+        )}
       </div>
 
       <div className="mt-3 flex flex-wrap gap-2">
@@ -149,9 +163,11 @@ export default function MarketplacePage() {
               <ItemCard
                 key={item.id}
                 item={item}
+                loggedIn={!!session}
                 affordable={points >= item.points_cost}
                 redeeming={redeeming === item.id}
                 onRedeem={handleRedeem}
+                onSignInRequired={() => navigate('/login')}
               />
             ))
           )}

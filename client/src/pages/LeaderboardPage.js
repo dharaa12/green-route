@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Trophy, Crown, Leaf, UserPlus } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { lbs } from '../utils/units';
@@ -71,7 +72,8 @@ function Row({ entry, isMe, onAdd }) {
 }
 
 export default function LeaderboardPage() {
-  const { authFetch, profile } = useApp();
+  const { authFetch, session, profile } = useApp();
+  const navigate = useNavigate();
   const [tab, setTab] = useState('global');
   const [data, setData] = useState({ global: [], friends: [] });
   const [loading, setLoading] = useState(true);
@@ -80,11 +82,12 @@ export default function LeaderboardPage() {
   useEffect(() => {
     Promise.all([
       authFetch('/api/leaderboard').catch(() => []),
-      authFetch('/api/leaderboard/friends').catch(() => []),
+      session ? authFetch('/api/leaderboard/friends').catch(() => []) : Promise.resolve([]),
     ]).then(([global, friends]) => setData({ global, friends })).finally(() => setLoading(false));
-  }, [authFetch]);
+  }, [authFetch, session]);
 
   async function addFriend(username) {
+    if (!session) return navigate('/login');
     try {
       await authFetch('/api/friends/add', { method: 'POST', body: JSON.stringify({ username }) });
       setToast(`Added ${username}`);
@@ -139,6 +142,16 @@ export default function LeaderboardPage() {
 
       {loading ? (
         <p className="py-8 text-center text-sm text-gray-400">Loading…</p>
+      ) : tab === 'friends' && !session ? (
+        <div className="flex flex-col items-center gap-3 py-8 text-center">
+          <p className="text-sm text-gray-400">Sign in to see how your friends stack up.</p>
+          <button
+            onClick={() => navigate('/login')}
+            className="rounded-xl bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700"
+          >
+            Sign in
+          </button>
+        </div>
       ) : entries.length === 0 ? (
         <p className="py-8 text-center text-sm text-gray-400">
           {tab === 'friends' ? 'Add friends to see their ranking.' : 'No data yet.'}
