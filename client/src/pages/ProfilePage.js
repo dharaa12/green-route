@@ -122,7 +122,7 @@ export default function ProfilePage() {
             </p>
           </div>
 
-          <div className="mt-6 grid grid-cols-2 gap-3">
+          <div className="mt-6 grid auto-rows-fr grid-cols-2 gap-3">
             <StatTile icon={TreePine} tone="green" value={lbs(profile.co2_saved_kg)} label="CO₂ saved (lbs)" />
             <StatTile icon={Leaf} tone="green" value={profile.climate_points} label="Climate Points" />
             <StatTile icon={TrendingUp} tone="blue" value={greenTrips} label="Green trips" />
