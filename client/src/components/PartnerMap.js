@@ -1,6 +1,7 @@
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { MapContainer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { useEffect } from 'react';
+import BaseMap from './BaseMap';
 
 function pinIcon(letter, color) {
   return L.divIcon({
@@ -36,10 +37,7 @@ export default function PartnerMap({ items }) {
 
   return (
     <MapContainer center={[40.735, -73.98]} zoom={12} className="h-full w-full" zoomControl>
-      <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-      />
+      <BaseMap />
       {pins.map(i => (
         <Marker key={i.id} position={[i.lat, i.lng]} icon={pinIcon(i.partner_name[0].toUpperCase(), i.color)}>
           <Popup>

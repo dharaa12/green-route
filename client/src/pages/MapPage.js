@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { MapContainer, TileLayer, Polyline, Marker, useMap } from 'react-leaflet';
+import { MapContainer, Polyline, Marker, useMap } from 'react-leaflet';
 import L from 'leaflet';
+import BaseMap from '../components/BaseMap';
 import { Search, Leaf, MapPin, LocateFixed } from 'lucide-react';
 import { fetchAllRoutes, annotateRoutes } from '../utils/routing';
 import { getUserCoord, reverseGeocode } from '../utils/geo';
@@ -228,10 +229,7 @@ export default function MapPage() {
   const mapPanel = (
     <div className="relative h-full w-full">
       <MapContainer center={[40.7128, -74.006]} zoom={12} className="w-full h-full" zoomControl>
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
+        <BaseMap />
         {routes.map(route => (
           <Polyline
             key={`${route.id}-${selectedId === route.id}`}
