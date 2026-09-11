@@ -23,9 +23,10 @@ export default function LocationInput({ value, onChange, placeholder, icon: Icon
   const debounceRef = useRef(null);
   const containerRef = useRef(null);
 
-  // Sync external value resets
+  // Keep in sync when the parent sets a value from outside (e.g. "Use my
+  // current location"), not just when it's cleared.
   useEffect(() => {
-    if (value === '') setQuery('');
+    setQuery(value || '');
   }, [value]);
 
   // Close dropdown on outside click
