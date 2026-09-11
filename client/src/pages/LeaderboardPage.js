@@ -98,8 +98,11 @@ export default function LeaderboardPage() {
   const podium = tab === 'global' ? entries.slice(0, 3) : [];
   const podiumOrder = podium.length === 3 ? [podium[1], podium[0], podium[2]] : podium;
 
+  const mid = Math.ceil(entries.length / 2);
+  const columns = [entries.slice(0, mid), entries.slice(mid)];
+
   return (
-    <div className="mx-auto max-w-2xl px-4 pb-10">
+    <div className="mx-auto max-w-4xl px-4 pb-10">
       <div className="flex items-center gap-2 pt-8">
         <Trophy size={22} className="text-amber-500" />
         <div>
@@ -113,14 +116,14 @@ export default function LeaderboardPage() {
       )}
 
       {podiumOrder.length === 3 && (
-        <div className="mt-6 grid grid-cols-3 items-end gap-3">
+        <div className="mx-auto mt-6 grid max-w-xl grid-cols-3 items-end gap-3">
           {podiumOrder.map(e => (
             <PodiumCard key={e.id} entry={e} isMe={e.id === profile?.id} />
           ))}
         </div>
       )}
 
-      <div className="mt-6 flex rounded-xl bg-gray-100 p-1">
+      <div className="mx-auto mt-6 flex max-w-md rounded-xl bg-gray-100 p-1">
         {['global', 'friends'].map(t => (
           <button
             key={t}
@@ -134,19 +137,23 @@ export default function LeaderboardPage() {
         ))}
       </div>
 
-      <div className="mt-4 space-y-2">
-        {loading ? (
-          <p className="py-8 text-center text-sm text-gray-400">Loading…</p>
-        ) : entries.length === 0 ? (
-          <p className="py-8 text-center text-sm text-gray-400">
-            {tab === 'friends' ? 'Add friends to see their ranking.' : 'No data yet.'}
-          </p>
-        ) : (
-          entries.map(e => (
-            <Row key={e.id} entry={e} isMe={e.id === profile?.id} onAdd={tab === 'global' ? addFriend : null} />
-          ))
-        )}
-      </div>
+      {loading ? (
+        <p className="py-8 text-center text-sm text-gray-400">Loading…</p>
+      ) : entries.length === 0 ? (
+        <p className="py-8 text-center text-sm text-gray-400">
+          {tab === 'friends' ? 'Add friends to see their ranking.' : 'No data yet.'}
+        </p>
+      ) : (
+        <div className="mt-4 sm:grid sm:grid-cols-2 sm:gap-x-4">
+          {columns.map((col, i) => (
+            <div key={i} className="space-y-2">
+              {col.map(e => (
+                <Row key={e.id} entry={e} isMe={e.id === profile?.id} onAdd={tab === 'global' ? addFriend : null} />
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

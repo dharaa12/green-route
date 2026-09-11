@@ -107,61 +107,67 @@ export default function ProfilePage() {
     : null;
 
   return (
-    <div className="mx-auto max-w-2xl px-4 pb-10">
-      <div className="flex flex-col items-center pt-8 text-center">
-        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-green-600 text-2xl font-bold text-white">
-          {profile.username[0].toUpperCase()}
-        </div>
-        <h1 className="mt-3 text-xl font-bold text-gray-900">{profile.username}</h1>
-        {since && <p className="text-sm text-gray-500">Member since {since}</p>}
-        <p className="mt-1 flex items-center gap-1 text-sm font-semibold text-green-600">
-          <Leaf size={14} /> {profile.climate_points} Climate Points
-        </p>
-      </div>
-
-      <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatTile icon={TreePine} tone="green" value={lbs(profile.co2_saved_kg)} label="CO₂ saved (lbs)" />
-        <StatTile icon={Leaf} tone="green" value={profile.climate_points} label="Climate Points" />
-        <StatTile icon={TrendingUp} tone="blue" value={greenTrips} label="Green trips" />
-        <StatTile icon={Flame} tone="amber" value={friends.length} label="Friends" />
-      </div>
-
-      <div className="mt-4">
-        <WeeklyImpactChart trips={trips} />
-      </div>
-
-      <div className="mt-6 flex rounded-xl bg-gray-100 p-1">
-        {['history', 'badges', 'friends'].map(t => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`flex-1 rounded-lg py-2 text-sm font-medium capitalize transition-colors ${
-              tab === t ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'
-            }`}
-          >
-            {t}
-          </button>
-        ))}
-      </div>
-
-      <div className="mt-4">
-        {loading && <p className="py-8 text-center text-sm text-gray-400">Loading…</p>}
-
-        {!loading && tab === 'history' && (
-          trips.length === 0
-            ? <p className="py-8 text-center text-sm text-gray-400">No trips yet. Search a route to get started.</p>
-            : <div className="space-y-2">{trips.map(t => <TripRow key={t.id} trip={t} />)}</div>
-        )}
-
-        {!loading && tab === 'badges' && (
-          <div className="grid grid-cols-2 gap-3">
-            {[...(profile.badges || [])]
-              .sort((a, b) => (b.earned ? 1 : 0) - (a.earned ? 1 : 0))
-              .map(b => <BadgeCard key={b.id} badge={b} />)}
+    <div className="mx-auto max-w-5xl px-4 pb-10">
+      <div className="lg:grid lg:grid-cols-[320px_1fr] lg:gap-8 lg:pt-8">
+        {/* Left rail */}
+        <div className="lg:sticky lg:top-6 lg:self-start">
+          <div className="flex flex-col items-center pt-8 text-center lg:pt-0">
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-green-600 text-2xl font-bold text-white">
+              {profile.username[0].toUpperCase()}
+            </div>
+            <h1 className="mt-3 text-xl font-bold text-gray-900">{profile.username}</h1>
+            {since && <p className="text-sm text-gray-500">Member since {since}</p>}
+            <p className="mt-1 flex items-center gap-1 text-sm font-semibold text-green-600">
+              <Leaf size={14} /> {profile.climate_points} Climate Points
+            </p>
           </div>
-        )}
 
-        {!loading && tab === 'friends' && (
+          <div className="mt-6 grid grid-cols-2 gap-3">
+            <StatTile icon={TreePine} tone="green" value={lbs(profile.co2_saved_kg)} label="CO₂ saved (lbs)" />
+            <StatTile icon={Leaf} tone="green" value={profile.climate_points} label="Climate Points" />
+            <StatTile icon={TrendingUp} tone="blue" value={greenTrips} label="Green trips" />
+            <StatTile icon={Flame} tone="amber" value={friends.length} label="Friends" />
+          </div>
+
+          <div className="mt-4">
+            <WeeklyImpactChart trips={trips} />
+          </div>
+        </div>
+
+        {/* Main column */}
+        <div className="mt-6 lg:mt-0">
+          <div className="flex rounded-xl bg-gray-100 p-1">
+            {['history', 'badges', 'friends'].map(t => (
+              <button
+                key={t}
+                onClick={() => setTab(t)}
+                className={`flex-1 rounded-lg py-2 text-sm font-medium capitalize transition-colors ${
+                  tab === t ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'
+                }`}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+
+          <div className="mt-4">
+            {loading && <p className="py-8 text-center text-sm text-gray-400">Loading…</p>}
+
+            {!loading && tab === 'history' && (
+              trips.length === 0
+                ? <p className="py-8 text-center text-sm text-gray-400">No trips yet. Search a route to get started.</p>
+                : <div className="space-y-2">{trips.map(t => <TripRow key={t.id} trip={t} />)}</div>
+            )}
+
+            {!loading && tab === 'badges' && (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {[...(profile.badges || [])]
+                  .sort((a, b) => (b.earned ? 1 : 0) - (a.earned ? 1 : 0))
+                  .map(b => <BadgeCard key={b.id} badge={b} />)}
+              </div>
+            )}
+
+            {!loading && tab === 'friends' && (
           <div>
             <form onSubmit={handleAddFriend} className="relative">
               <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -196,6 +202,8 @@ export default function ProfilePage() {
             </div>
           </div>
         )}
+          </div>
+        </div>
       </div>
     </div>
   );
