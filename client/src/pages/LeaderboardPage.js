@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { Navigate } from 'react-router-dom';
 import { Trophy, Crown, Leaf, UserPlus } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { lbs } from '../utils/units';
@@ -72,22 +71,18 @@ function Row({ entry, isMe, onAdd }) {
 }
 
 export default function LeaderboardPage() {
-  const { authFetch, profile, session, loading: authLoading } = useApp();
+  const { authFetch, profile } = useApp();
   const [tab, setTab] = useState('global');
   const [data, setData] = useState({ global: [], friends: [] });
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState('');
 
   useEffect(() => {
-    if (!session) return;
     Promise.all([
       authFetch('/api/leaderboard').catch(() => []),
       authFetch('/api/leaderboard/friends').catch(() => []),
     ]).then(([global, friends]) => setData({ global, friends })).finally(() => setLoading(false));
-  }, [authFetch, session]);
-
-  if (authLoading) return <div className="p-8 text-center text-gray-500">Loading…</div>;
-  if (!session) return <Navigate to="/login" replace />;
+  }, [authFetch]);
 
   async function addFriend(username) {
     try {

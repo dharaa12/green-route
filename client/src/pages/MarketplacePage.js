@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Navigate } from 'react-router-dom';
 import { ShoppingBag, Leaf, Check, List, Map as MapIcon } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import PartnerMap from '../components/PartnerMap';
@@ -48,7 +47,7 @@ function ItemCard({ item, affordable, redeeming, onRedeem }) {
 }
 
 export default function MarketplacePage() {
-  const { authFetch, profile, updatePoints, session, loading: authLoading } = useApp();
+  const { authFetch, profile, updatePoints } = useApp();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [cat, setCat] = useState('all');
@@ -56,9 +55,8 @@ export default function MarketplacePage() {
   const [toast, setToast] = useState('');
 
   useEffect(() => {
-    if (!session) return;
     authFetch('/api/marketplace').then(setItems).catch(() => {}).finally(() => setLoading(false));
-  }, [authFetch, session]);
+  }, [authFetch]);
 
   async function handleRedeem(item) {
     setRedeeming(item.id);
@@ -85,9 +83,6 @@ export default function MarketplacePage() {
 
   const hasMap = shown.some(i => Number.isFinite(i.lat));
   const [mobileView, setMobileView] = useState('list');
-
-  if (authLoading) return <div className="p-8 text-center text-gray-500">Loading…</div>;
-  if (!session) return <Navigate to="/login" replace />;
 
   return (
     <div className="mx-auto max-w-7xl px-4 pb-6">
