@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Navigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { Leaf, TreePine, TrendingUp, Flame, Car, Train, Bike, UserPlus, Search } from 'lucide-react';
 import { lbs, mi } from '../utils/units';
@@ -67,7 +68,7 @@ function BadgeCard({ badge }) {
 }
 
 export default function ProfilePage() {
-  const { profile, authFetch } = useApp();
+  const { profile, authFetch, session, loading: authLoading } = useApp();
   const [trips, setTrips] = useState([]);
   const [friends, setFriends] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -76,6 +77,7 @@ export default function ProfilePage() {
   const [addMsg, setAddMsg] = useState('');
 
   useEffect(() => {
+    if (!session) return;
     Promise.all([
       authFetch('/api/trips').catch(() => []),
       authFetch('/api/friends').catch(() => []),
@@ -83,7 +85,7 @@ export default function ProfilePage() {
       setTrips(t);
       setFriends(f);
     }).finally(() => setLoading(false));
-  }, [authFetch]);
+  }, [authFetch, session]);
 
   async function handleAddFriend(e) {
     e.preventDefault();
@@ -99,6 +101,8 @@ export default function ProfilePage() {
     setTimeout(() => setAddMsg(''), 3000);
   }
 
+  if (authLoading) return <div className="p-8 text-center text-gray-500">Loading…</div>;
+  if (!session) return <Navigate to="/login" replace />;
   if (!profile) return <div className="p-8 text-center text-gray-500">Loading…</div>;
 
   const greenTrips = trips.filter(t => t.route_type !== 'drive').length;
