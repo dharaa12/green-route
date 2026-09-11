@@ -20,9 +20,9 @@ export default function TopNav() {
   }
 
   return (
-    <header className="bg-white border-b border-gray-200 flex items-center px-4 h-14 z-50 relative shadow-sm">
+    <header className="bg-white border-b border-gray-200 flex items-center px-3 sm:px-4 h-14 z-50 relative shadow-sm">
       {/* Logo */}
-      <Link to="/" className="flex items-center gap-2 mr-6 flex-shrink-0">
+      <Link to="/" className="flex items-center gap-2 mr-2 sm:mr-6 flex-shrink-0">
         <div className="bg-green-600 text-white rounded-lg p-1.5">
           <Leaf size={18} />
         </div>
@@ -33,20 +33,21 @@ export default function TopNav() {
       </Link>
 
       {/* Nav tabs */}
-      <nav className="flex items-center gap-1 flex-1">
+      <nav className="flex items-center gap-0.5 sm:gap-1 flex-1">
         {tabs.map(({ to, icon: Icon, label }) => {
           const active = pathname === to;
           return (
             <Link
               key={to}
               to={to}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+              aria-label={label}
+              className={`flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                 active
                   ? 'bg-green-50 text-green-700'
                   : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
               }`}
             >
-              <Icon size={15} />
+              <Icon size={16} />
               <span className="hidden sm:inline">{label}</span>
             </Link>
           );
@@ -54,16 +55,16 @@ export default function TopNav() {
       </nav>
 
       {/* Auth */}
-      <div className="flex items-center gap-2 flex-shrink-0">
+      <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
         {session && profile ? (
           <>
             <span className="bg-green-100 text-green-700 text-xs font-semibold px-2 py-1 rounded-full flex items-center gap-1">
-              <Leaf size={11} /> {profile.climate_points} pts
+              <Leaf size={11} /> {profile.climate_points}<span className="hidden sm:inline">&nbsp;pts</span>
             </span>
-            <div className="w-8 h-8 rounded-full bg-green-600 text-white flex items-center justify-center font-bold text-sm">
+            <div className="w-8 h-8 rounded-full bg-green-600 text-white flex items-center justify-center font-bold text-sm flex-shrink-0">
               {profile.username[0].toUpperCase()}
             </div>
-            <button onClick={handleLogout} className="text-gray-400 hover:text-gray-600 ml-1">
+            <button onClick={handleLogout} aria-label="Log out" className="text-gray-400 hover:text-gray-600 flex-shrink-0">
               <LogOut size={16} />
             </button>
           </>

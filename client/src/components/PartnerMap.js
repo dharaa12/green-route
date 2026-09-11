@@ -17,8 +17,15 @@ function pinIcon(letter, color) {
 function Fit({ points }) {
   const map = useMap();
   useEffect(() => {
-    if (points.length > 1) map.fitBounds(points, { padding: [50, 50], maxZoom: 14 });
-    else if (points.length === 1) map.setView(points[0], 14);
+    // The map may have mounted inside a hidden container (mobile List/Map toggle).
+    const apply = () => {
+      map.invalidateSize();
+      if (points.length > 1) map.fitBounds(points, { padding: [50, 50], maxZoom: 14 });
+      else if (points.length === 1) map.setView(points[0], 14);
+    };
+    apply();
+    const t = setTimeout(apply, 250);
+    return () => clearTimeout(t);
   }, [points, map]);
   return null;
 }

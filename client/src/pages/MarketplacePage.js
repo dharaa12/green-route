@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { ShoppingBag, Leaf, Check } from 'lucide-react';
+import { ShoppingBag, Leaf, Check, List, Map as MapIcon } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import PartnerMap from '../components/PartnerMap';
 
@@ -82,6 +82,7 @@ export default function MarketplacePage() {
   const points = profile?.climate_points || 0;
 
   const hasMap = shown.some(i => Number.isFinite(i.lat));
+  const [mobileView, setMobileView] = useState('list');
 
   return (
     <div className="mx-auto max-w-7xl px-4 pb-6">
@@ -93,7 +94,7 @@ export default function MarketplacePage() {
             <p className="text-sm text-gray-500">Spend climate points at NYC partners</p>
           </div>
         </div>
-        <span className="flex items-center gap-1 rounded-full bg-green-100 px-3 py-1 text-sm font-semibold text-green-700">
+        <span className="flex flex-shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-green-100 px-3 py-1 text-sm font-semibold text-green-700">
           <Leaf size={13} /> {points} pts
         </span>
       </div>
@@ -116,9 +117,29 @@ export default function MarketplacePage() {
         <div className="mt-3 rounded-xl bg-green-600 px-4 py-2.5 text-sm font-medium text-white">{toast}</div>
       )}
 
+      {hasMap && (
+        <div className="mt-3 flex rounded-xl bg-gray-100 p-1 lg:hidden">
+          {[['list', List, 'List'], ['map', MapIcon, 'Map']].map(([v, Icon, label]) => (
+            <button
+              key={v}
+              onClick={() => setMobileView(v)}
+              className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-sm font-medium transition-colors ${
+                mobileView === v ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'
+              }`}
+            >
+              <Icon size={14} /> {label}
+            </button>
+          ))}
+        </div>
+      )}
+
       <div className="mt-4 lg:flex lg:items-start lg:gap-5">
-        <div className="space-y-3 lg:w-[380px] lg:flex-shrink-0 lg:overflow-y-auto lg:pr-1"
-             style={{ maxHeight: 'calc(100vh - 150px)' }}>
+        <div
+          className={`space-y-3 lg:block lg:w-[380px] lg:flex-shrink-0 lg:overflow-y-auto lg:pr-1 ${
+            mobileView === 'map' ? 'hidden' : ''
+          }`}
+          style={{ maxHeight: 'calc(100vh - 150px)' }}
+        >
           {loading ? (
             <p className="py-8 text-center text-sm text-gray-400">Loading…</p>
           ) : shown.length === 0 ? (
@@ -138,7 +159,9 @@ export default function MarketplacePage() {
 
         {hasMap && (
           <div
-            className="sticky top-[68px] mt-4 hidden overflow-hidden rounded-2xl border border-gray-200 lg:mt-0 lg:block lg:flex-1"
+            className={`mt-4 overflow-hidden rounded-2xl border border-gray-200 lg:sticky lg:top-[68px] lg:mt-0 lg:block lg:flex-1 ${
+              mobileView === 'map' ? 'block' : 'hidden'
+            }`}
             style={{ height: 'calc(100vh - 150px)' }}
           >
             <PartnerMap items={shown} />
