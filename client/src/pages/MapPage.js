@@ -81,6 +81,7 @@ export default function MapPage() {
         if (refresh) setError('Location unavailable. Enable location access for this site and try again.');
         return;
       }
+      setError('');
       setUserCoord(coord);
       if (prefill) {
         const rev = await reverseGeocode(coord);
