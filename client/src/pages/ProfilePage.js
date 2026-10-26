@@ -111,7 +111,7 @@ export default function ProfilePage() {
     : null;
 
   return (
-    <div className="mx-auto max-w-5xl px-4 pb-10">
+    <div className="mx-auto max-w-7xl px-4 pb-10">
       <div className="lg:grid lg:grid-cols-[320px_1fr] lg:gap-8 lg:pt-8">
         {/* Left rail */}
         <div className="lg:sticky lg:top-6 lg:self-start">
