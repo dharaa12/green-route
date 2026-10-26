@@ -71,7 +71,7 @@ export default function MarketplacePage() {
         body: JSON.stringify({ item_id: item.id }),
       });
       updatePoints(data.new_total_points, undefined);
-      setToast(`Redeemed "${item.name}" at ${item.partner_name}`);
+      setToast(`Redeemed "${item.name}" (demo reward)`);
     } catch (err) {
       setToast(err.message);
     } finally {
@@ -95,8 +95,13 @@ export default function MarketplacePage() {
         <div className="flex items-center gap-2">
           <ShoppingBag size={22} className="text-green-600" />
           <div>
-            <h1 className="text-xl font-bold text-gray-900">Marketplace</h1>
-            <p className="text-sm text-gray-500">Spend climate points at NYC partners</p>
+            <h1 className="flex items-center gap-2 text-xl font-bold text-gray-900">
+              Marketplace
+              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-amber-700">
+                Demo
+              </span>
+            </h1>
+            <p className="text-sm text-gray-500">Spend climate points on rewards</p>
           </div>
         </div>
         {session ? (
@@ -112,6 +117,10 @@ export default function MarketplacePage() {
           </button>
         )}
       </div>
+
+      <p className="mt-2 text-xs text-gray-400">
+        Example rewards from NYC businesses, showing what GreenRoute is designed for. No live partnerships, and redemptions are simulated.
+      </p>
 
       <div className="mt-3 flex flex-wrap gap-2">
         {CATEGORIES.map(c => (
