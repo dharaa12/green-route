@@ -11,7 +11,13 @@ import RouteCard from '../components/RouteCard';
 import EcoImpact from '../components/EcoImpact';
 
 function shortPlace(displayName) {
-  return displayName ? displayName.split(',').slice(0, 3).join(', ').trim() : 'My location';
+  if (!displayName) return 'My location';
+  return displayName
+    .split(',')
+    .map(p => p.trim())
+    .filter(p => p && !/community board/i.test(p))
+    .slice(0, 3)
+    .join(', ');
 }
 
 delete L.Icon.Default.prototype._getIconUrl;

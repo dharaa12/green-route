@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
-import { Leaf, TreePine, TrendingUp, Flame, Car, Train, Bike, UserPlus, Search } from 'lucide-react';
+import { Leaf, TreePine, TrendingUp, Flame, Car, Train, Bike, UserPlus, Search, ChevronDown } from 'lucide-react';
 import { lbs, mi } from '../utils/units';
+import { shortPlaceName } from '../utils/geo';
 import WeeklyImpactChart from '../components/WeeklyImpactChart';
 
 const MODE_ICON = { drive: Car, transit: Train, bike: Bike };
@@ -23,24 +24,41 @@ function StatTile({ icon: Icon, value, label, tone }) {
 }
 
 function TripRow({ trip }) {
+  const [open, setOpen] = useState(false);
   const Icon = MODE_ICON[trip.route_type] || Car;
   const isDrive = trip.route_type === 'drive';
   const when = new Date(trip.taken_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-gray-100 bg-white p-3 shadow-sm">
-      <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-500">
-        <Icon size={16} />
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-gray-800">{trip.origin} → {trip.destination}</p>
-        <p className="mt-0.5 text-xs text-gray-500">
-          {trip.duration_min ? `${trip.duration_min}m · ` : ''}{mi(trip.distance_km)} mi · {when}
-        </p>
-      </div>
-      <div className={`flex-shrink-0 text-right text-sm font-bold ${isDrive ? 'text-red-500' : 'text-green-600'}`}>
-        {isDrive ? `+${lbs(trip.co2_emitted_kg)}` : `−${lbs(trip.co2_saved_kg)}`} lbs
-        <span className="block text-[10px] font-normal text-gray-400">CO₂</span>
-      </div>
+    <div className="rounded-xl border border-gray-100 bg-white shadow-sm">
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        aria-expanded={open}
+        className="flex w-full items-center gap-3 p-3 text-left"
+      >
+        <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-500">
+          <Icon size={16} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-medium text-gray-800">
+            {shortPlaceName(trip.origin)} → {shortPlaceName(trip.destination)}
+          </p>
+          <p className="mt-0.5 text-xs text-gray-500">
+            {trip.duration_min ? `${trip.duration_min}m · ` : ''}{mi(trip.distance_km)} mi · {when}
+          </p>
+        </div>
+        <div className={`flex-shrink-0 text-right text-sm font-bold ${isDrive ? 'text-red-500' : 'text-green-600'}`}>
+          {isDrive ? `+${lbs(trip.co2_emitted_kg)}` : `−${lbs(trip.co2_saved_kg)}`} lbs
+          <span className="block text-[10px] font-normal text-gray-400">CO₂</span>
+        </div>
+        <ChevronDown size={16} className={`flex-shrink-0 text-gray-300 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="space-y-1.5 border-t border-gray-100 px-3 py-2.5 text-xs text-gray-600">
+          <p><span className="font-semibold text-gray-500">From</span> {trip.origin}</p>
+          <p><span className="font-semibold text-gray-500">To</span> {trip.destination}</p>
+        </div>
+      )}
     </div>
   );
 }

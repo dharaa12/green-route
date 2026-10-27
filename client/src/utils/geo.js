@@ -66,3 +66,13 @@ export async function reverseGeocode({ lat, lng }) {
     return null;
   }
 }
+
+// "Vessel, Chelsea District, New York" -> "Vessel". A bare house number
+// ("123, Main Street, ...") keeps the street so the name is still useful.
+export function shortPlaceName(label) {
+  if (!label) return '';
+  const parts = label.split(',').map(p => p.trim()).filter(Boolean);
+  if (!parts.length) return label;
+  if (/^\d+[A-Za-z]?(-\d+)?$/.test(parts[0]) && parts[1]) return `${parts[0]} ${parts[1]}`;
+  return parts[0];
+}
