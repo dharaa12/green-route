@@ -112,7 +112,7 @@ export default function ProfilePage() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 pb-10">
-      <div className="lg:grid lg:grid-cols-[320px_1fr] lg:gap-8 lg:pt-8">
+      <div className="lg:grid lg:grid-cols-[320px_minmax(0,1fr)] lg:gap-8 lg:pt-8">
         {/* Left rail */}
         <div className="lg:sticky lg:top-6 lg:self-start">
           <div className="flex flex-col items-center pt-8 text-center lg:pt-0">
@@ -139,7 +139,7 @@ export default function ProfilePage() {
         </div>
 
         {/* Main column */}
-        <div className="mt-6 lg:mt-0">
+        <div className="mt-6 min-w-0 lg:mt-0">
           <div className="flex rounded-xl bg-gray-100 p-1">
             {['history', 'badges', 'friends'].map(t => (
               <button
