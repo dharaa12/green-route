@@ -102,11 +102,9 @@ export default function LeaderboardPage() {
   const podiumOrder = podium.length === 3 ? [podium[1], podium[0], podium[2]] : podium;
 
   const splitColumns = entries.length > 6;
-  const mid = Math.ceil(entries.length / 2);
-  const columns = splitColumns ? [entries.slice(0, mid), entries.slice(mid)] : [entries];
 
   return (
-    <div className="mx-auto max-w-4xl px-4 pb-10">
+    <div className="mx-auto max-w-7xl px-4 pb-10">
       <div className="flex items-center gap-2 pt-8">
         <Trophy size={22} className="text-amber-500" />
         <div>
@@ -158,12 +156,11 @@ export default function LeaderboardPage() {
           {tab === 'friends' ? 'Add friends to see their ranking.' : 'No data yet.'}
         </p>
       ) : (
-        <div className={splitColumns ? 'mt-4 sm:grid sm:grid-cols-2 sm:gap-x-4' : 'mx-auto mt-4 max-w-md'}>
-          {columns.map((col, i) => (
-            <div key={i} className="space-y-2">
-              {col.map(e => (
-                <Row key={e.id} entry={e} isMe={e.id === profile?.id} onAdd={tab === 'global' ? addFriend : null} />
-              ))}
+        // CSS columns fill top-to-bottom, then across, and re-balance at each breakpoint.
+        <div className={splitColumns ? 'mt-4 sm:columns-2 sm:gap-x-4 xl:columns-3' : 'mx-auto mt-4 max-w-md'}>
+          {entries.map(e => (
+            <div key={e.id} className="mb-2 break-inside-avoid">
+              <Row entry={e} isMe={e.id === profile?.id} onAdd={tab === 'global' ? addFriend : null} />
             </div>
           ))}
         </div>
