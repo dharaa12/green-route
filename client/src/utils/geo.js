@@ -148,3 +148,47 @@ export function shortPlaceName(label) {
   if (/^\d+[A-Za-z]?(-\d+)?$/.test(parts[0]) && parts[1]) return `${parts[0]} ${parts[1]}`;
   return parts[0];
 }
+
+const toFix = pos => ({
+  lat: pos.coords.latitude,
+  lng: pos.coords.longitude,
+  accuracy: pos.coords.accuracy,
+  t: pos.timestamp,
+});
+
+// The three ways the browser can fail to give us a position, in plain words.
+function locationError(err) {
+  if (err.code === 1) {
+    return new Error('Location access is blocked for this site. Allow it in your browser or system settings to start a trip.');
+  }
+  if (err.code === 2) {
+    return new Error("Your device couldn't work out where you are. Check that location services (and Wi-Fi) are on.");
+  }
+  return new Error('Finding your location took too long. Try again.');
+}
+
+// One fresh, high-accuracy position fix (with its accuracy in metres).
+export function getCurrentFix({ timeout = 15000 } = {}) {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) return reject(new Error("This device can't share its location."));
+    navigator.geolocation.getCurrentPosition(
+      pos => resolve(toFix(pos)),
+      err => reject(locationError(err)),
+      { enableHighAccuracy: true, timeout, maximumAge: 0 },
+    );
+  });
+}
+
+// Follow the user's position. Returns a function that stops following.
+export function watchFixes(onFix, onError) {
+  if (!navigator.geolocation) {
+    onError(new Error("This device can't share its location."));
+    return () => {};
+  }
+  const id = navigator.geolocation.watchPosition(
+    pos => onFix(toFix(pos)),
+    err => onError(locationError(err)),
+    { enableHighAccuracy: true, maximumAge: 2000, timeout: 20000 },
+  );
+  return () => navigator.geolocation.clearWatch(id);
+}

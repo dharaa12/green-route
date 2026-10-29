@@ -1,4 +1,5 @@
 import { nominatimSearch } from './geo';
+import { buildNav } from './navigation';
 
 const API = process.env.REACT_APP_API_URL;
 
@@ -9,10 +10,20 @@ export async function geocode(query) {
   return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon), display: data[0].display_name };
 }
 
-// OSRM routing (free, no key) — profiles: driving, cycling, foot
-async function osrmRoute(profile, originLng, originLat, destLng, destLat) {
+// OSRM routing (free, no key) — profiles: driving, cycling, foot.
+// The public demo server (router.project-osrm.org) only has car data and
+// returns the same car route whatever profile you ask for, so "cycling" came
+// back as a driving route (same path, same time). routing.openstreetmap.de runs
+// a separate OSRM per vehicle; every one of them takes "driving" in the URL.
+const OSRM_BASE = {
+  driving: 'https://routing.openstreetmap.de/routed-car',
+  cycling: 'https://routing.openstreetmap.de/routed-bike',
+  foot: 'https://routing.openstreetmap.de/routed-foot',
+};
+
+async function osrmRoute(profile, originLng, originLat, destLng, destLat, { steps = false } = {}) {
   const coords = `${originLng},${originLat};${destLng},${destLat}`;
-  const url = `https://router.project-osrm.org/route/v1/${profile}/${coords}?overview=full&geometries=geojson`;
+  const url = `${OSRM_BASE[profile]}/route/v1/driving/${coords}?overview=full&geometries=geojson${steps ? '&steps=true' : ''}`;
   const res = await fetch(url);
   const data = await res.json();
   if (data.code !== 'Ok' || !data.routes.length) throw new Error('Route not found');
@@ -22,7 +33,15 @@ async function osrmRoute(profile, originLng, originLat, destLng, destLat) {
     duration_min: Math.round(route.duration / 60),
     // GeoJSON coords are [lng, lat], Leaflet needs [lat, lng]
     polyline: route.geometry.coordinates.map(([lng, lat]) => [lat, lng]),
+    // Turn-by-turn guidance, for routes someone can follow in the app.
+    ...(steps ? { nav: buildNav(route) } : {}),
   };
+}
+
+// A fresh bike route from where the rider is now, used to reroute after a
+// wrong turn.
+export function fetchBikeRoute(from, to) {
+  return osrmRoute('cycling', from.lng, from.lat, to.lng, to.lat, { steps: true });
 }
 
 // Real transit routing via our backend (Navitia), with an estimated fallback.
@@ -53,6 +72,15 @@ const MODE_META = {
   transit: { name: 'Subway + Transit', legs: [{ mode: 'transit', label: 'Transit' }] },
   bike:    { name: 'Bike Route',        legs: [{ mode: 'bike', label: 'Bike' }] },
 };
+
+// The points a bike or transit trip pays out. The server uses the same
+// arithmetic on the distance it was told at the start (server/lib/
+// tripVerification.js), so the card promises exactly what you will get.
+const PAYOUT_CO2_PER_KM = { bike: 0, transit: 0.089 };
+export function payoutPoints(mode, distanceKm) {
+  const saved = distanceKm * DRIVE_CO2_PER_KM - distanceKm * PAYOUT_CO2_PER_KM[mode];
+  return Math.max(0, Math.floor(parseFloat(saved.toFixed(3)) * 10));
+}
 
 function reward(co2EmittedKg, driveCo2Kg) {
   const saved = Math.max(0, parseFloat((driveCo2Kg - co2EmittedKg).toFixed(3)));
@@ -85,7 +113,7 @@ export async function fetchAllRoutes(origin, destination, fromCoord, toCoord) {
 
   const [drive, bike] = await Promise.all([
     osrmRoute('driving', from.lng, from.lat, to.lng, to.lat),
-    osrmRoute('cycling', from.lng, from.lat, to.lng, to.lat),
+    osrmRoute('cycling', from.lng, from.lat, to.lng, to.lat, { steps: true }),
   ]);
   const transit = await transitRoute(from, to, drive);
 
@@ -111,12 +139,14 @@ export async function fetchAllRoutes(origin, destination, fromCoord, toCoord) {
       source: transit.source,
       transfers: transit.transfers,
       ...reward(transitCo2, driveCo2),
+      points_earned: payoutPoints('transit', transit.distance_km ?? drive.distance_km),
     },
     {
       id: 'bike', label: 'Bike', mode: 'bike', color: '#22c55e',
       ...bike,
       co2_emitted_kg: 0,
       ...reward(0, driveCo2),
+      points_earned: payoutPoints('bike', bike.distance_km),
     },
   ];
 }

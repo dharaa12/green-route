@@ -10,7 +10,8 @@ This is a full-stack rebuild of a hackathon prototype (built during NYC Tech Wee
 
 ## Features
 
-- **Real multi-modal routing** — driving and cycling routes via [OSRM](http://project-osrm.org/), and actual NYC subway/bus routing from real MTA transit data (through [Transitous](https://transitous.org/)), not a simulated approximation
+- **Real multi-modal routing** — driving and cycling routes via [OSRM](http://project-osrm.org/) (separate car and bike data, hosted by [OSM Germany](https://routing.openstreetmap.de/)), and actual NYC subway/bus routing from real MTA transit data (through [Transitous](https://transitous.org/)), not a simulated approximation
+- **Turn-by-turn bike trips** — start a trip and follow live guidance on the map; if you take a wrong turn it reroutes from where you are. Points are awarded only when you arrive, and a simulated demo trip is available for trying it without moving
 - **Carbon-aware route comparison** — every option is tagged as fastest or greenest, with an estimated % reduction in emissions and real-world equivalents (tree-days, phone charges, driving miles offset)
 - **Climate points & badges** — a self-healing badge engine that re-evaluates achievements on every relevant action (a trip, adding a friend, visiting your profile), so progress never gets stuck out of sync
 - **Marketplace** — a rewards catalog modeled on NYC businesses, browsable without an account so you can see what's on offer before signing up (illustrative seed data; see below)
@@ -20,6 +21,8 @@ This is a full-stack rebuild of a hackathon prototype (built during NYC Tech Wee
 ## What's real and what's seeded
 
 **Real:** routing, transit, geocoding, accounts and auth, the database, and the deployment.
+
+**How trips earn points:** a bike or transit trip is started in the app (the server signs a token recording when and where it began) and finished by arriving. The server checks that you started near the origin, finished near the destination, and took a plausible amount of time for the distance and mode, and each started trip can only be redeemed once. These are plausibility checks, not proof: a phone's location can be faked, and an average speed can't tell a bike from a car in city traffic. Transit trips have no turn-by-turn guidance yet, only the start and arrival checks. Simulated demo trips never touch the server and never earn points.
 
 **Seeded or simulated:** the leaderboard users and the rewards catalog are demo data. The business names in the catalog are illustrative, with no actual partnerships. Redeeming a reward deducts points but doesn't produce anything a business could honor.
 

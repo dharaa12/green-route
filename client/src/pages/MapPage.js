@@ -9,6 +9,7 @@ import { useApp } from '../context/AppContext';
 import LocationInput from '../components/LocationInput';
 import RouteCard from '../components/RouteCard';
 import EcoImpact from '../components/EcoImpact';
+import { useTrip, ActiveTripPanel, ActiveTripMap } from '../components/ActiveTrip';
 
 function shortPlace(displayName) {
   if (!displayName) return 'My location';
@@ -27,15 +28,15 @@ L.Icon.Default.mergeOptions({
   shadowUrl: require('leaflet/dist/images/marker-shadow.png'),
 });
 
-function FitBounds({ routes }) {
+function FitBounds({ routes, paused }) {
   const map = useMap();
   useEffect(() => {
-    if (!routes.length) return;
+    if (paused || !routes.length) return;
     const pts = routes
       .flatMap(r => r.polyline || [])
       .filter(p => Array.isArray(p) && p.length === 2 && Number.isFinite(p[0]) && Number.isFinite(p[1]));
     if (pts.length >= 2) map.fitBounds(pts, { padding: [50, 50], maxZoom: 15 });
-  }, [routes, map]);
+  }, [routes, map, paused]);
   return null;
 }
 
@@ -78,6 +79,11 @@ export default function MapPage() {
   const [toast, setToast] = useState('');
   const [userCoord, setUserCoord] = useState(null);
   const [locating, setLocating] = useState(false);
+  const tripCtl = useTrip({
+    authFetch,
+    onCompleted: data => updatePoints(data.new_total_points, undefined),
+  });
+  const tripActive = !!tripCtl.trip;
 
   async function locateMe({ refresh = false, prefill = true } = {}) {
     setLocating(true);
@@ -165,6 +171,11 @@ export default function MapPage() {
     }
   }
 
+  function startTrip(route, demo = false) {
+    setError('');
+    tripCtl.start({ ...route, origin: from.label, destination: to.label }, { demo });
+  }
+
   const searchPanel = (
     <div className="p-4 border-b border-gray-100 bg-white">
       <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Route</p>
@@ -218,6 +229,8 @@ export default function MapPage() {
               selected={selectedId === route.id}
               onSelect={setSelectedId}
               onTake={handleTakeRoute}
+              onStart={r => startTrip(r)}
+              onDemo={r => startTrip(r, true)}
               taking={taking}
               canLog={!!session}
             />
@@ -237,7 +250,7 @@ export default function MapPage() {
     <div className="relative h-full w-full">
       <MapContainer center={[40.7128, -74.006]} zoom={12} className="w-full h-full" zoomControl>
         <BaseMap />
-        {routes.map(route => (
+        {!tripActive && routes.map(route => (
           <Polyline
             key={`${route.id}-${selectedId === route.id}`}
             positions={route.polyline}
@@ -250,13 +263,14 @@ export default function MapPage() {
             eventHandlers={{ click: () => setSelectedId(route.id) }}
           />
         ))}
-        {fromCoord && <Marker position={fromCoord} />}
-        {toCoord && <Marker position={toCoord} />}
-        {routes.length === 0 && <Recenter coord={userCoord} />}
-        <FitBounds routes={routes} />
+        {!tripActive && fromCoord && <Marker position={fromCoord} />}
+        {!tripActive && toCoord && <Marker position={toCoord} />}
+        {routes.length === 0 && !tripActive && <Recenter coord={userCoord} />}
+        <FitBounds routes={routes} paused={tripActive} />
+        <ActiveTripMap trip={tripCtl.trip} />
       </MapContainer>
 
-      {routes.length > 0 && (
+      {routes.length > 0 && !tripActive && (
         <div className="absolute top-3 right-3 bg-white rounded-xl shadow-md p-2.5 z-[1000]">
           <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Mode</p>
           {routes.map(r => (
@@ -280,8 +294,7 @@ export default function MapPage() {
     return (
       <div className="flex" style={{ height: 'calc(100vh - 56px)' }}>
         <div className="w-80 flex-shrink-0 bg-white border-r border-gray-200 flex flex-col overflow-y-auto">
-          {searchPanel}
-          {resultsPanel}
+          {tripActive ? <ActiveTripPanel ctl={tripCtl} /> : <>{searchPanel}{resultsPanel}</>}
         </div>
         <div className="flex-1">{mapPanel}</div>
       </div>
@@ -290,9 +303,9 @@ export default function MapPage() {
 
   return (
     <div className="flex flex-col">
-      {searchPanel}
+      {tripActive ? <ActiveTripPanel ctl={tripCtl} /> : searchPanel}
       <div className="h-[42vh] flex-shrink-0">{mapPanel}</div>
-      {resultsPanel}
+      {!tripActive && resultsPanel}
     </div>
   );
 }

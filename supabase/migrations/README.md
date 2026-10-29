@@ -9,6 +9,7 @@ or with the Supabase CLI (`supabase db push`) once the project is linked.
 | 001 | `001_initial_schema.sql` | Base schema — profiles, trips, badges, user_badges, marketplace_items, redemptions, friendships, RLS policies, seed data. Run once when setting up a fresh project. |
 | 002 | `002_marketplace_partners.sql` | Adds `lat` / `lng` / `value_usd` / `color` to `marketplace_items` and reseeds the partner catalog. Also makes `redemptions.item_id` `ON DELETE SET NULL` so the catalog can be refreshed. |
 | 003 | `003_badges.sql` | Final badge set — the original seven plus **Social Butterfly** (5+ friends). Adds a `color` column and a `friends` threshold type; drops the old `threshold_type` CHECK constraint. |
+| 004 | `004_trip_sessions.sql` | Adds `trips.session_id` with a unique index, so a started trip can only be completed (and earn points) once. **Run this before deploying the trip-verification API**, or completing a trip will fail. |
 
 ## Badge history (for reference)
 

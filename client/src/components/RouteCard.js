@@ -19,7 +19,7 @@ function legText(leg) {
   return leg.label || 'Transit';
 }
 
-export default function RouteCard({ route, selected, onSelect, onTake, taking, canLog }) {
+export default function RouteCard({ route, selected, onSelect, onTake, onStart, onDemo, taking, canLog }) {
   const accent = MODE_ACCENT[route.mode];
   const isEstimate = route.source === 'estimate';
 
@@ -103,22 +103,43 @@ export default function RouteCard({ route, selected, onSelect, onTake, taking, c
       )}
 
       {selected && (
-        canLog ? (
-          <button
-            onClick={e => { e.stopPropagation(); onTake(route); }}
-            disabled={taking}
-            className="mt-3 w-full rounded-xl bg-green-600 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-green-700 disabled:opacity-60"
-          >
-            {taking ? 'Logging…' : 'Take this route'}
-          </button>
+        // Driving earns nothing, so it is simply logged. Bike and transit trips
+        // earn points, so they are started here and only pay out on arrival.
+        route.mode === 'drive' ? (
+          canLog && (
+            <button
+              onClick={e => { e.stopPropagation(); onTake(route); }}
+              disabled={taking}
+              className="mt-3 w-full rounded-xl border border-gray-300 py-2.5 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-60"
+            >
+              {taking ? 'Logging…' : 'Log this drive'}
+            </button>
+          )
         ) : (
-          <Link
-            to="/login"
-            onClick={e => e.stopPropagation()}
-            className="mt-3 block w-full rounded-xl border border-green-500 py-2.5 text-center text-sm font-semibold text-green-600 transition-colors hover:bg-green-50"
-          >
-            Sign in to log trip &amp; earn points
-          </Link>
+          <>
+            {canLog ? (
+              <button
+                onClick={e => { e.stopPropagation(); onStart(route); }}
+                className="mt-3 w-full rounded-xl bg-green-600 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-green-700"
+              >
+                Start trip{route.points_earned > 0 ? ` · +${route.points_earned} pts` : ''}
+              </button>
+            ) : (
+              <Link
+                to="/login"
+                onClick={e => e.stopPropagation()}
+                className="mt-3 block w-full rounded-xl border border-green-500 py-2.5 text-center text-sm font-semibold text-green-600 transition-colors hover:bg-green-50"
+              >
+                Sign in to start a trip &amp; earn points
+              </Link>
+            )}
+            <button
+              onClick={e => { e.stopPropagation(); onDemo(route); }}
+              className="mt-2 w-full rounded-lg py-1.5 text-xs font-medium text-gray-500 transition-colors hover:bg-gray-50 hover:text-green-700"
+            >
+              Try a simulated trip (no points)
+            </button>
+          </>
         )
       )}
     </div>
