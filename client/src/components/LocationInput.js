@@ -47,7 +47,11 @@ export default function LocationInput({ value, onChange, placeholder, icon: Icon
 
     clearTimeout(debounceRef.current);
     const requestId = ++requestRef.current;
-    if (!val) { setSuggestions([]); setOpen(false); return; }
+    // The old suggestions belong to the previous text, so drop them now rather
+    // than leave them on screen while the new search runs.
+    setSuggestions([]);
+    setOpen(false);
+    if (!val) { setLoading(false); return; }
 
     debounceRef.current = setTimeout(async () => {
       setLoading(true);
@@ -67,7 +71,7 @@ export default function LocationInput({ value, onChange, placeholder, icon: Icon
       } finally {
         setLoading(false);
       }
-    }, 300);
+    }, 500); // wait out pauses mid-word; a half-typed word matches nothing nearby
   }
 
   function handleSelect(item) {
@@ -109,10 +113,13 @@ export default function LocationInput({ value, onChange, placeholder, icon: Icon
             <X size={13} />
           </button>
         )}
-        {loading && !query && (
-          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-300 text-xs">…</span>
-        )}
       </div>
+
+      {loading && query && !open && (
+        <div className="absolute z-[2000] left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl px-4 py-3 text-sm text-gray-400">
+          Searching…
+        </div>
+      )}
 
       {open && suggestions.length > 0 && (
         <ul className="absolute z-[2000] left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden">
