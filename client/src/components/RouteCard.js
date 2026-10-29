@@ -135,7 +135,7 @@ export default function RouteCard({ route, selected, onSelect, onTake, onStart, 
             )}
             <button
               onClick={e => { e.stopPropagation(); onDemo(route); }}
-              className="mt-2 w-full rounded-lg py-1.5 text-xs font-medium text-gray-500 transition-colors hover:bg-gray-50 hover:text-green-700"
+              className="mt-2 w-full rounded-xl border border-green-200 bg-green-50 py-2 text-sm font-semibold text-green-700 transition-colors hover:bg-green-100"
             >
               Try a simulated trip (no points)
             </button>
