@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 
 const AppContext = createContext(null);
 const API = process.env.REACT_APP_API_URL;
@@ -11,20 +11,60 @@ export function AppProvider({ children }) {
   const [loading, setLoading] = useState(!!localStorage.getItem('gr_session'));
 
   const token = session?.access_token;
+  const refreshToken = session?.refresh_token;
+  const refreshing = useRef(null);
+
+  // Access tokens expire after an hour. Trade the refresh token for a new
+  // session; concurrent callers share one request because a refresh token can
+  // only be used once.
+  const refreshSession = useCallback(() => {
+    if (!refreshToken) return Promise.resolve(null);
+    if (!refreshing.current) {
+      refreshing.current = fetch(`${API}/api/auth/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh_token: refreshToken }),
+      })
+        .then(async res => {
+          if (!res.ok) {
+            // The refresh token itself is dead: stop pretending to be signed in.
+            if (res.status === 401) {
+              localStorage.removeItem('gr_session');
+              setSession(null);
+              setProfile(null);
+            }
+            return null;
+          }
+          const { session: fresh } = await res.json();
+          localStorage.setItem('gr_session', JSON.stringify(fresh));
+          setSession(fresh);
+          return fresh;
+        })
+        .catch(() => null)
+        .finally(() => { refreshing.current = null; });
+    }
+    return refreshing.current;
+  }, [refreshToken]);
 
   const authFetch = useCallback(async (path, options = {}) => {
-    const res = await fetch(`${API}${path}`, {
+    const send = bearer => fetch(`${API}${path}`, {
       ...options,
       headers: {
         'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(bearer ? { Authorization: `Bearer ${bearer}` } : {}),
         ...(options.headers || {}),
       },
     });
+    let res = await send(token);
+    if (res.status === 401 && token) {
+      const fresh = await refreshSession();
+      if (!fresh) throw new Error('Your session has expired. Please sign in again.');
+      res = await send(fresh.access_token);
+    }
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Request failed');
     return data;
-  }, [token]);
+  }, [token, refreshSession]);
 
   const fetchProfile = useCallback(async () => {
     if (!token) return;

@@ -56,4 +56,16 @@ router.post('/login', async (req, res) => {
   res.json({ user: data.user, session: data.session, profile });
 });
 
+// Access tokens last an hour. The browser trades its refresh token for a new
+// session here instead of making the user sign in again.
+router.post('/refresh', async (req, res) => {
+  const { refresh_token } = req.body;
+  if (!refresh_token) return res.status(400).json({ error: 'refresh_token required' });
+
+  const { data, error } = await anonClient().auth.refreshSession({ refresh_token });
+  if (error || !data.session) return res.status(401).json({ error: 'Session expired, please sign in again' });
+
+  res.json({ session: data.session });
+});
+
 module.exports = router;
