@@ -207,7 +207,7 @@ function Chip({ tone, children }) {
 }
 
 export function ActiveTripPanel({ ctl }) {
-  const { trip, end, retryArrival, wrongTurn } = ctl;
+  const { trip, start, end, retryArrival, wrongTurn } = ctl;
   if (!trip) return null;
 
   const { route, status, mode } = trip;
@@ -223,12 +223,28 @@ export function ActiveTripPanel({ ctl }) {
   }
 
   if (status === 'error') {
+    // A real trip can only start with location access, standing at the start.
+    // Anyone else (a visitor, a laptop) can still see how it works.
+    const canDemo = (route.polyline || []).length >= 2;
     return (
       <div className="p-5">
         <p className="flex items-start gap-2 text-sm font-medium text-red-600">
           <TriangleAlert size={16} className="mt-0.5 flex-shrink-0" /> {trip.error}
         </p>
-        <button onClick={end} className="mt-4 w-full rounded-xl border border-gray-300 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50">
+        {canDemo && (
+          <>
+            <button
+              onClick={() => start(route, { demo: true })}
+              className="mt-4 w-full rounded-xl bg-green-600 py-2.5 text-sm font-semibold text-white hover:bg-green-700"
+            >
+              Try a simulated trip instead
+            </button>
+            <p className="mt-1.5 text-center text-xs text-gray-500">
+              Replays this route with fake location. No points are earned.
+            </p>
+          </>
+        )}
+        <button onClick={end} className="mt-3 w-full rounded-xl border border-gray-300 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50">
           Back to routes
         </button>
       </div>
