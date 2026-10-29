@@ -4,14 +4,15 @@ import { nominatimSearch } from '../utils/geo';
 
 function formatSuggestion(item) {
   const a = item.address || {};
+  const street = a.house_number && a.road ? `${a.house_number} ${a.road}` : a.road;
   const primary = item.name || a.amenity || a.shop || a.tourism || a.building ||
-    a.railway || a.road;
+    a.railway || street;
   const parts = [
     primary,
     a.neighbourhood || a.suburb || a.city_district,
     a.city || a.town || a.village,
     a.state,
-  ].filter(Boolean);
+  ].filter(p => p && !/community board/i.test(p));
   return [...new Set(parts)].join(', ') || item.display_name.split(',').slice(0, 3).join(',');
 }
 
@@ -21,6 +22,7 @@ export default function LocationInput({ value, onChange, placeholder, icon: Icon
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const debounceRef = useRef(null);
+  const requestRef = useRef(0);
   const containerRef = useRef(null);
 
   // Keep in sync when the parent sets a value from outside (e.g. "Use my
@@ -44,14 +46,24 @@ export default function LocationInput({ value, onChange, placeholder, icon: Icon
     onChange(val); // keep parent in sync while typing
 
     clearTimeout(debounceRef.current);
+    const requestId = ++requestRef.current;
     if (!val) { setSuggestions([]); setOpen(false); return; }
 
     debounceRef.current = setTimeout(async () => {
       setLoading(true);
       try {
         const results = await nominatimSearch(val, 6);
-        setSuggestions(results);
-        setOpen(results.length > 0);
+        if (requestId !== requestRef.current) return; // a newer keystroke superseded this search
+        // One street comes back as several segments with the same label.
+        const seen = new Set();
+        const unique = results.filter(item => {
+          const label = formatSuggestion(item);
+          if (seen.has(label)) return false;
+          seen.add(label);
+          return true;
+        });
+        setSuggestions(unique);
+        setOpen(unique.length > 0);
       } finally {
         setLoading(false);
       }
@@ -60,6 +72,7 @@ export default function LocationInput({ value, onChange, placeholder, icon: Icon
 
   function handleSelect(item) {
     const label = formatSuggestion(item);
+    requestRef.current++;
     setQuery(label);
     onChange(label, { lat: parseFloat(item.lat), lng: parseFloat(item.lon) });
     setSuggestions([]);
@@ -67,6 +80,7 @@ export default function LocationInput({ value, onChange, placeholder, icon: Icon
   }
 
   function handleClear() {
+    requestRef.current++;
     setQuery('');
     onChange('');
     setSuggestions([]);

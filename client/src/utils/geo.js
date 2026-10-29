@@ -14,28 +14,24 @@ export function getUserCoord({ refresh = false } = {}) {
   return coordPromise;
 }
 
-// A ~85km box around a point, for biasing (not restricting) search results.
+// The product is NYC-first, so this is where we look when we don't know where
+// the user is.
+const NYC = { lat: 40.7128, lng: -74.006 };
+
+// A ~85km box around a point: roughly the NYC / New Jersey metro area.
 function viewboxAround({ lat, lng }, d = 0.75) {
   return `${lng - d},${lat + d},${lng + d},${lat - d}`;
 }
 
-// Free OSM geocoding. Results near the user's location are preferred, but
-// searches anywhere in the world still work (bounded=0). Falls back to an
-// unbiased global search when location permission is denied or unavailable.
-export async function nominatimSearch(query, limit = 6) {
-  if (!query || query.trim().length < 2) return [];
+async function nominatimRequest(query, limit, extra) {
   const params = new URLSearchParams({
     q: query,
     format: 'json',
     addressdetails: '1',
     dedupe: '1',
     limit: String(limit),
+    ...extra,
   });
-  const coord = await getUserCoord();
-  if (coord) {
-    params.set('viewbox', viewboxAround(coord));
-    params.set('bounded', '0');
-  }
   try {
     const res = await fetch(`https://nominatim.openstreetmap.org/search?${params}`, {
       headers: { 'Accept-Language': 'en' },
@@ -45,6 +41,82 @@ export async function nominatimSearch(query, limit = 6) {
   } catch {
     return [];
   }
+}
+
+function kmBetween(a, b) {
+  const dLat = (a.lat - b.lat) * 111;
+  const dLng = (a.lng - b.lng) * 111 * Math.cos((a.lat * Math.PI) / 180);
+  return Math.hypot(dLat, dLng);
+}
+
+// Nominatim orders matches by importance, not distance, so "Trader Joe's"
+// would start in Brooklyn for someone in Newark. Keep the best match's name
+// first, but order its same-named results (chains, street segments) by how
+// close they are, then leave the rest in Nominatim's order.
+function nearestFirst(items, center) {
+  const nameOf = i => (i.name || i.display_name.split(',')[0]).toLowerCase();
+  const best = items[0] && nameOf(items[0]);
+  const distance = i => kmBetween(center, { lat: parseFloat(i.lat), lng: parseFloat(i.lon) });
+  return [
+    ...items.filter(i => nameOf(i) === best).sort((a, b) => distance(a) - distance(b)),
+    ...items.filter(i => nameOf(i) !== best),
+  ];
+}
+
+function ordinal(n) {
+  const lastTwo = n % 100;
+  if (lastTwo >= 11 && lastTwo <= 13) return `${n}th`;
+  return `${n}${['th', 'st', 'nd', 'rd'][n % 10] || 'th'}`;
+}
+
+// OSM spells numbered streets with ordinals ("West 106th Street") and
+// Nominatim won't match "106" to "106th", so "157 W 106 Street" finds no
+// building. Google bridges that gap; we add the suffix when a number is
+// clearly a street name: before "Street"/"St", or before a bare "Avenue".
+// A house number ("130 Court Street", "100 Avenue of the Americas") is left alone.
+function ordinalizeStreets(query) {
+  return query.replace(
+    /\b(\d+)(?=\s+(?:street\b|st\s*(?:,|$)|(?:avenue|ave)\s*(?:,|$)))/gi,
+    (_, n) => ordinal(Number(n)),
+  );
+}
+
+// Free OSM geocoding, ranked nearest-first. A viewbox on its own is only a
+// soft hint to Nominatim (the best text match anywhere still wins, so
+// "106 Street" finds Yangon before Manhattan's "West 106th Street"), so the
+// metro area around the user is searched first, restricted to that box. Only
+// when it has nothing do we look everywhere else, with the US ahead of the rest
+// of the world, which keeps a place abroad ("Eiffel Tower") findable.
+// Nominatim's public API allows ~1 request/second, so this makes at most two.
+export async function nominatimSearch(query, limit = 6) {
+  const q = query?.trim();
+  if (!q || q.length < 2) return [];
+  const center = (await getUserCoord()) || NYC;
+  const viewbox = viewboxAround(center);
+  const seen = new Set();
+  const results = [];
+  const add = (items, max) => {
+    let added = 0;
+    for (const item of nearestFirst(items, center)) {
+      if (added >= max || results.length >= limit) break;
+      if (seen.has(item.display_name)) continue;
+      seen.add(item.display_name);
+      results.push(item);
+      added++;
+    }
+  };
+
+  // Ask for Nominatim's maximum so the nearest match isn't cut off before we
+  // can order by distance (a limit of 15 missed Hoboken's Trader Joe's).
+  add(await nominatimRequest(ordinalizeStreets(q), 40, { viewbox, bounded: '1' }), limit);
+  if (results.length > 0) return results;
+
+  const elsewhere = await nominatimRequest(q, 40, { viewbox, bounded: '0' });
+  const isUS = item => item.address?.country_code === 'us';
+  add(elsewhere.filter(isUS), Math.ceil((limit - results.length) / 2));
+  add(elsewhere.filter(item => !isUS(item)), limit);
+  add(elsewhere.filter(isUS), limit);
+  return results;
 }
 
 // Turn the user's coordinate into a readable place name to prefill the origin.
