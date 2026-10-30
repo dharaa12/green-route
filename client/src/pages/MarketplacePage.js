@@ -113,7 +113,7 @@ export default function MarketplacePage() {
             onClick={() => navigate('/login')}
             className="flex-shrink-0 whitespace-nowrap rounded-full bg-green-600 px-3.5 py-1.5 text-sm font-semibold text-white hover:bg-green-700"
           >
-            Sign in to earn points
+            Sign in<span className="hidden sm:inline"> to earn points</span>
           </button>
         )}
       </div>

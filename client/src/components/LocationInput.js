@@ -102,7 +102,7 @@ export default function LocationInput({ value, onChange, placeholder, icon: Icon
           onChange={handleChange}
           onFocus={() => suggestions.length > 0 && setOpen(true)}
           placeholder={placeholder}
-          className="w-full border border-gray-200 rounded-xl pl-8 pr-8 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 bg-gray-50 focus:bg-white transition-colors"
+          className="w-full border border-gray-200 rounded-xl pl-8 pr-8 py-2.5 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-green-400 bg-gray-50 focus:bg-white transition-colors"
         />
         {query && (
           <button

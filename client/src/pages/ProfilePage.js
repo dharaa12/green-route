@@ -197,7 +197,7 @@ export default function ProfilePage() {
                 value={addName}
                 onChange={e => setAddName(e.target.value)}
                 placeholder="Search people to add…"
-                className="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 pl-9 pr-24 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-green-400"
+                className="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 pl-9 pr-24 text-base sm:text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-green-400"
               />
               <button type="submit" className="absolute right-1.5 top-1/2 flex -translate-y-1/2 items-center gap-1 rounded-lg bg-green-600 px-3 py-1.5 text-xs font-semibold text-white">
                 <UserPlus size={13} /> Add
