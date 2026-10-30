@@ -3,12 +3,17 @@ import { createContext, useContext, useState, useEffect, useCallback, useRef } f
 const AppContext = createContext(null);
 const API = process.env.REACT_APP_API_URL;
 
+// The login lives in sessionStorage, so it ends with the tab: a new tab or
+// browser opens the site signed out. Earlier versions kept it in localStorage;
+// clear that copy so those logins don't linger.
+try { localStorage.removeItem('gr_session'); } catch { /* storage unavailable */ }
+
 export function AppProvider({ children }) {
   const [session, setSession] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('gr_session')); } catch { return null; }
+    try { return JSON.parse(sessionStorage.getItem('gr_session')); } catch { return null; }
   });
   const [profile, setProfile] = useState(null);
-  const [loading, setLoading] = useState(!!localStorage.getItem('gr_session'));
+  const [loading, setLoading] = useState(!!sessionStorage.getItem('gr_session'));
 
   const token = session?.access_token;
   const refreshToken = session?.refresh_token;
@@ -29,14 +34,14 @@ export function AppProvider({ children }) {
           if (!res.ok) {
             // The refresh token itself is dead: stop pretending to be signed in.
             if (res.status === 401) {
-              localStorage.removeItem('gr_session');
+              sessionStorage.removeItem('gr_session');
               setSession(null);
               setProfile(null);
             }
             return null;
           }
           const { session: fresh } = await res.json();
-          localStorage.setItem('gr_session', JSON.stringify(fresh));
+          sessionStorage.setItem('gr_session', JSON.stringify(fresh));
           setSession(fresh);
           return fresh;
         })
@@ -84,13 +89,13 @@ export function AppProvider({ children }) {
   }, [token, fetchProfile]);
 
   function login(sessionData, profileData) {
-    localStorage.setItem('gr_session', JSON.stringify(sessionData));
+    sessionStorage.setItem('gr_session', JSON.stringify(sessionData));
     setSession(sessionData);
     setProfile(profileData);
   }
 
   function logout() {
-    localStorage.removeItem('gr_session');
+    sessionStorage.removeItem('gr_session');
     setSession(null);
     setProfile(null);
   }
