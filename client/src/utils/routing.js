@@ -73,18 +73,11 @@ const MODE_META = {
   bike:    { name: 'Bike Route',        legs: [{ mode: 'bike', label: 'Bike' }] },
 };
 
-// The points a bike or transit trip pays out. The server uses the same
-// arithmetic on the distance it was told at the start (server/lib/
-// tripVerification.js), so the card promises exactly what you will get.
-const PAYOUT_CO2_PER_KM = { bike: 0, transit: 0.089 };
-export function payoutPoints(mode, distanceKm) {
-  const saved = distanceKm * DRIVE_CO2_PER_KM - distanceKm * PAYOUT_CO2_PER_KM[mode];
-  return Math.max(0, Math.floor(parseFloat(saved.toFixed(3)) * 10));
-}
-
 function reward(co2EmittedKg, driveCo2Kg) {
   const saved = Math.max(0, parseFloat((driveCo2Kg - co2EmittedKg).toFixed(3)));
-  return { co2_saved_kg: saved, points_earned: Math.max(0, Math.floor(saved * 10)) };
+  // 10 points per kg saved, in whole grams: server/lib/tripVerification.js does
+  // the same sum on the same figure, so the card promises what the trip pays.
+  return { co2_saved_kg: saved, points_earned: Math.floor(Math.round(saved * 1000) / 100) };
 }
 
 // Tag the option set so the UI can show which route is fastest / greenest.
@@ -139,14 +132,12 @@ export async function fetchAllRoutes(origin, destination, fromCoord, toCoord) {
       source: transit.source,
       transfers: transit.transfers,
       ...reward(transitCo2, driveCo2),
-      points_earned: payoutPoints('transit', transit.distance_km ?? drive.distance_km),
     },
     {
       id: 'bike', label: 'Bike', mode: 'bike', color: '#22c55e',
       ...bike,
       co2_emitted_kg: 0,
       ...reward(0, driveCo2),
-      points_earned: payoutPoints('bike', bike.distance_km),
     },
   ];
 }

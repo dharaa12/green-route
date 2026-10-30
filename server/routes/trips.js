@@ -82,7 +82,7 @@ router.post('/start', requireAuth, (req, res) => {
 router.post('/complete', requireAuth, async (req, res) => {
   try {
     const trip = verifyFinish(req.body.trip_token, req.body.position, req.user.id);
-    const reward = rewardFor(trip.mode, trip.km);
+    const reward = rewardFor(trip);
     res.json(await recordTrip(req.supabase, req.user.id, {
       origin: trip.origin,
       destination: trip.destination,

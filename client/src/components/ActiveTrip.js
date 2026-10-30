@@ -161,6 +161,10 @@ export function useTrip({ authFetch, onCompleted }) {
           origin_coord: { lat: oLat, lng: oLng },
           dest_coord: { lat, lng },
           distance_km: route.distance_km,
+          // The figures the route card showed. The server caps them and pays
+          // out exactly these.
+          co2_saved_kg: route.co2_saved_kg,
+          co2_emitted_kg: route.co2_emitted_kg,
           position: { lat: fix.lat, lng: fix.lng, accuracy: fix.accuracy },
         }),
       });

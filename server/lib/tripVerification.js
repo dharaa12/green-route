@@ -9,10 +9,12 @@ const crypto = require('crypto');
 const MODES = {
   // Average speed over the whole trip, in km/h. Wide on purpose: stops, red
   // lights, waiting for a train and e-bikes all happen.
-  bike:    { minKmh: 3, maxKmh: 40, maxKm: 80,  co2PerKm: 0.0 },
-  transit: { minKmh: 2, maxKmh: 100, maxKm: 200, co2PerKm: 0.089 },
+  bike:    { minKmh: 3, maxKmh: 40, maxKm: 80 },
+  transit: { minKmh: 2, maxKmh: 100, maxKm: 200 },
 };
-const DRIVE_CO2_PER_KM = 0.21;
+const DRIVE_CO2_PER_KM = 0.21; // kg of CO2 per km driven
+const MAX_ROUTE_FACTOR = 3;    // no road or rail route is longer than this x the straight line...
+const MAX_ROUTE_EXTRA_KM = 1;  // ...plus a kilometre of slack
 
 const START_RADIUS_M = 1000;  // you must be near where the trip starts
 const ARRIVE_RADIUS_M = 150;  // ...and near where it ends
@@ -51,6 +53,12 @@ function readToken(token) {
   return JSON.parse(Buffer.from(body, 'base64url').toString());
 }
 
+// 10 points per kg of CO2 saved. Done in whole grams so the browser and the
+// server can never disagree over floating-point rounding.
+function pointsFor(savedKg) {
+  return Math.floor(Math.round(savedKg * 1000) / 100);
+}
+
 function haversineM(a, b) {
   const R = 6371000, toRad = d => (d * Math.PI) / 180;
   const dLat = toRad(b.lat - a.lat);
@@ -66,7 +74,10 @@ const slack = accuracy => Math.min(Math.max(Number(accuracy) || 0, 0), MAX_ACCUR
 
 // Check a start request and return the token payload to sign.
 function planTrip(body, userId, now = Date.now()) {
-  const { route_type, origin, destination, origin_coord, dest_coord, distance_km, position } = body;
+  const {
+    route_type, origin, destination, origin_coord, dest_coord, distance_km, position,
+    co2_saved_kg, co2_emitted_kg,
+  } = body;
   const mode = MODES[route_type];
   if (!mode) throw new TripError('Only bike and transit trips are started this way');
   if (!origin || !destination) throw new TripError('Missing origin or destination');
@@ -79,8 +90,24 @@ function planTrip(body, userId, now = Date.now()) {
   // A route can't be shorter than the straight line between its ends, and a
   // wildly longer one is just a way to claim more distance.
   const straightKm = haversineM(origin_coord, dest_coord) / 1000;
-  if (km < straightKm * 0.9 || km > straightKm * 3 + 1) {
+  const longestRouteKm = straightKm * MAX_ROUTE_FACTOR + MAX_ROUTE_EXTRA_KM;
+  if (km < straightKm * 0.9 || km > longestRouteKm) {
     throw new TripError('Trip distance does not match its start and end');
+  }
+
+  // The CO2 figures are the ones the route card showed (saving against driving
+  // the same trip). The server can't redo that sum, because the car route and
+  // the transit mix are worked out in the browser, so it caps them instead:
+  // nothing can save more than driving the longest plausible road route would
+  // have emitted. The cap comes from the straight-line distance and not from
+  // this trip's own length, because a bike route is often shorter than the car
+  // route it is compared with.
+  const ceilingKg = longestRouteKm * DRIVE_CO2_PER_KM;
+  if (!Number.isFinite(co2_saved_kg) || !Number.isFinite(co2_emitted_kg)) {
+    throw new TripError('Missing CO2 figures for this trip');
+  }
+  if (co2_saved_kg < 0 || co2_saved_kg > ceilingKg || co2_emitted_kg < 0 || co2_emitted_kg > ceilingKg) {
+    throw new TripError('CO2 figures are out of range for this trip');
   }
 
   const fromStart = haversineM(position, origin_coord);
@@ -98,6 +125,8 @@ function planTrip(body, userId, now = Date.now()) {
     destination,
     dest: { lat: dest_coord.lat, lng: dest_coord.lng },
     km,
+    saved: parseFloat(co2_saved_kg.toFixed(3)),
+    emitted: parseFloat(co2_emitted_kg.toFixed(3)),
     t0: now,
   };
 }
@@ -108,6 +137,9 @@ function verifyFinish(token, position, userId, now = Date.now()) {
   if (trip.uid !== userId) throw new TripError('This trip belongs to another account', 403);
   const mode = MODES[trip.mode];
   if (!mode) throw new TripError('Invalid trip token');
+  if (!Number.isFinite(trip.saved) || !Number.isFinite(trip.emitted)) {
+    throw new TripError('This trip was started before an update. Start a new one.');
+  }
   if (now - trip.t0 > TOKEN_TTL_MS) throw new TripError('This trip expired. Start a new one.');
   if (!isCoord(position)) throw new TripError('Location is required to finish a trip');
 
@@ -127,14 +159,17 @@ function verifyFinish(token, position, userId, now = Date.now()) {
   return trip;
 }
 
-// Same arithmetic the app has always used, but on a distance the server holds.
-function rewardFor(mode, km) {
-  const emitted = parseFloat((km * MODES[mode].co2PerKm).toFixed(3));
-  const saved = parseFloat((km * DRIVE_CO2_PER_KM - emitted).toFixed(3));
-  return { co2_emitted_kg: emitted, co2_saved_kg: saved, points_earned: Math.floor(saved * 10) };
+// What gets logged and paid is exactly what was signed at the start, so the
+// route card, Eco-Impact, points and trip history all show one number.
+function rewardFor(trip) {
+  return {
+    co2_emitted_kg: trip.emitted,
+    co2_saved_kg: trip.saved,
+    points_earned: pointsFor(trip.saved),
+  };
 }
 
 module.exports = {
-  TripError, planTrip, verifyFinish, signToken, readToken, rewardFor, haversineM,
+  TripError, planTrip, verifyFinish, signToken, readToken, rewardFor, pointsFor, haversineM,
   START_RADIUS_M, ARRIVE_RADIUS_M, MODES,
 };
