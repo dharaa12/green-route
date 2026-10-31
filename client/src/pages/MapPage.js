@@ -199,7 +199,7 @@ export default function MapPage() {
     <div className="p-4 border-b border-gray-100 bg-white">
       <h2 className="mb-4 hidden text-xl font-semibold text-gray-900 lg:block">Plan a route</h2>
       <form onSubmit={handleSearch} className="space-y-3">
-        <div className="rounded-2xl border border-gray-200 bg-gray-50 transition-colors focus-within:border-green-400 focus-within:bg-white focus-within:ring-2 focus-within:ring-green-200">
+        <div className="rounded-lg border border-gray-200 bg-gray-50 transition-colors focus-within:border-green-400 focus-within:bg-white focus-within:ring-2 focus-within:ring-green-200">
           <LocationInput
             variant="card"
             label="From"

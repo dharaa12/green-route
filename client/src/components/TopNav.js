@@ -41,7 +41,7 @@ export default function TopNav() {
               key={to}
               to={to}
               aria-current={active ? 'page' : undefined}
-              className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+              className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
                 active
                   ? 'bg-green-50 text-green-700'
                   : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'

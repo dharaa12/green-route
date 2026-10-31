@@ -32,7 +32,7 @@ export default function BottomNav() {
               className="flex flex-1 flex-col items-center justify-center gap-1 text-[11px]"
             >
               <span
-                className={`flex h-7 w-14 items-center justify-center rounded-full transition-colors ${
+                className={`flex h-7 w-14 items-center justify-center rounded-lg transition-colors ${
                   active ? 'bg-green-100 text-green-700' : 'text-gray-500'
                 }`}
               >
