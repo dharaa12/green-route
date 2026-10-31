@@ -77,7 +77,7 @@ function useIsDesktop() {
 }
 
 export default function MapPage() {
-  const { authFetch, session, updatePoints } = useApp();
+  const { authFetch, session, updatePoints, setHideTabBar } = useApp();
   const isDesktop = useIsDesktop();
   const [from, setFrom] = useState({ label: '', coord: null });
   const [to, setTo] = useState({ label: '', coord: null });
@@ -96,6 +96,13 @@ export default function MapPage() {
     onCompleted: data => updatePoints(data.new_total_points, undefined),
   });
   const tripActive = !!tripCtl.trip;
+
+  // A trip lives in this page, so leaving it ends the trip: take the phone tab
+  // bar away while one is under way.
+  useEffect(() => {
+    setHideTabBar(tripActive);
+    return () => setHideTabBar(false);
+  }, [tripActive, setHideTabBar]);
 
   async function locateMe({ refresh = false, prefill = true } = {}) {
     setLocating(true);
@@ -323,9 +330,16 @@ export default function MapPage() {
   }
 
   return (
-    // 56px is the top bar. The map takes whatever height the panel above it
-    // leaves, and never less than 42vh once results push the page past one screen.
-    <div className="flex min-h-[calc(100dvh-56px)] flex-col">
+    // 56px is the top bar and 4rem the tab bar (gone during a trip). The map takes
+    // whatever height the panel above it leaves, and never less than 42vh once
+    // results push the page past one screen.
+    <div
+      className={`flex flex-col ${
+        tripActive
+          ? 'min-h-[calc(100dvh-56px)]'
+          : 'min-h-[calc(100dvh-56px-4rem-env(safe-area-inset-bottom))]'
+      }`}
+    >
       {tripActive ? <ActiveTripPanel ctl={tripCtl} /> : searchPanel}
       <div className="relative min-h-[42vh] flex-1">
         <div className="absolute inset-0">{mapPanel}</div>

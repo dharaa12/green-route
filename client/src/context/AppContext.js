@@ -14,6 +14,8 @@ export function AppProvider({ children }) {
   });
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(!!sessionStorage.getItem('gr_session'));
+  // The map page hides the phone tab bar while a trip is under way.
+  const [hideTabBar, setHideTabBar] = useState(false);
 
   const token = session?.access_token;
   const refreshToken = session?.refresh_token;
@@ -105,7 +107,7 @@ export function AppProvider({ children }) {
   }
 
   return (
-    <AppContext.Provider value={{ session, profile, loading, authFetch, login, logout, updatePoints, fetchProfile }}>
+    <AppContext.Provider value={{ session, profile, loading, authFetch, login, logout, updatePoints, fetchProfile, hideTabBar, setHideTabBar }}>
       {children}
     </AppContext.Provider>
   );

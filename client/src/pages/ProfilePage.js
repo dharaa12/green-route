@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
-import { Leaf, TreePine, TrendingUp, Flame, Car, Train, Bike, UserPlus, Search, ChevronDown } from 'lucide-react';
+import { Leaf, TreePine, TrendingUp, Flame, Car, Train, Bike, UserPlus, Search, ChevronDown, LogOut } from 'lucide-react';
 import { lbs, mi } from '../utils/units';
 import { shortPlaceName } from '../utils/geo';
 import WeeklyImpactChart from '../components/WeeklyImpactChart';
@@ -86,7 +86,8 @@ function BadgeCard({ badge }) {
 }
 
 export default function ProfilePage() {
-  const { profile, authFetch, session, loading: authLoading } = useApp();
+  const { profile, authFetch, session, loading: authLoading, logout } = useApp();
+  const navigate = useNavigate();
   const [trips, setTrips] = useState([]);
   const [friends, setFriends] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -227,6 +228,14 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
+
+      {/* The top bar has no sign-out on phones, so it lives here. */}
+      <button
+        onClick={() => { logout(); navigate('/'); }}
+        className="mt-8 flex w-full items-center justify-center gap-2 rounded-xl border border-gray-300 py-2.5 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 lg:hidden"
+      >
+        <LogOut size={16} /> Sign out
+      </button>
     </div>
   );
 }

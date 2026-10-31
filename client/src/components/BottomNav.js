@@ -1,32 +1,48 @@
 import { Link, useLocation } from 'react-router-dom';
-import { MapPin, Trophy, ShoppingBag, User } from 'lucide-react';
+import { Route, Gift, Trophy } from 'lucide-react';
+import { useApp } from '../context/AppContext';
 
 const tabs = [
-  { to: '/', icon: MapPin, label: 'Map' },
+  { to: '/', icon: Route, label: 'Route' },
+  { to: '/marketplace', icon: Gift, label: 'Marketplace' },
   { to: '/leaderboard', icon: Trophy, label: 'Leaderboard' },
-  { to: '/marketplace', icon: ShoppingBag, label: 'Marketplace' },
-  { to: '/profile', icon: User, label: 'Profile' },
 ];
 
+// Phone navigation. On laptops the same links live in the top bar. Hidden
+// during a trip so a stray tap can't walk away from it (see Shell).
 export default function BottomNav() {
   const { pathname } = useLocation();
+  const { hideTabBar } = useApp();
+  if (hideTabBar) return null;
+
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex z-50">
-      {tabs.map(({ to, icon: Icon, label }) => {
-        const active = pathname === to;
-        return (
-          <Link
-            key={to}
-            to={to}
-            className={`flex-1 flex flex-col items-center py-2 text-xs gap-1 transition-colors ${
-              active ? 'text-green-600' : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            <Icon size={22} strokeWidth={active ? 2.5 : 1.8} />
-            <span>{label}</span>
-          </Link>
-        );
-      })}
+    // z-[1100] keeps it above Leaflet's panes and controls (up to 1000) when the map scrolls under it.
+    <nav
+      aria-label="Main"
+      className="fixed inset-x-0 bottom-0 z-[1100] border-t border-gray-200 bg-white pb-[env(safe-area-inset-bottom)] lg:hidden"
+    >
+      <div className="flex h-16">
+        {tabs.map(({ to, icon: Icon, label }) => {
+          const active = pathname === to;
+          return (
+            <Link
+              key={to}
+              to={to}
+              aria-current={active ? 'page' : undefined}
+              className="flex flex-1 flex-col items-center justify-center gap-1 text-[11px]"
+            >
+              <span
+                className={`flex h-7 w-14 items-center justify-center rounded-full transition-colors ${
+                  active ? 'bg-green-100 text-green-700' : 'text-gray-500'
+                }`}
+              >
+                <Icon size={20} />
+              </span>
+              <span className={active ? 'font-semibold text-green-700' : 'font-medium text-gray-500'}>{label}</span>
+            </Link>
+          );
+        })}
+      </div>
     </nav>
   );
 }

@@ -158,10 +158,11 @@ export default function MarketplacePage() {
 
       <div className="mt-4 lg:flex lg:items-start lg:gap-5">
         <div
-          className={`space-y-3 lg:block lg:w-[380px] lg:flex-shrink-0 lg:overflow-y-auto lg:pr-1 ${
+          // The height cap goes with the scrolling, so it only applies on laptops; on a
+          // phone the page itself scrolls and the cards must count toward its height.
+          className={`space-y-3 lg:block lg:max-h-[calc(100vh-150px)] lg:w-[380px] lg:flex-shrink-0 lg:overflow-y-auto lg:pr-1 ${
             mobileView === 'map' ? 'hidden' : ''
           }`}
-          style={{ maxHeight: 'calc(100vh - 150px)' }}
         >
           {loading ? (
             <p className="py-8 text-center text-sm text-gray-400">Loading…</p>

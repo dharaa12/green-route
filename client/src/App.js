@@ -1,7 +1,7 @@
 import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AppProvider } from './context/AppContext';
-import TopNav from './components/TopNav';
+import Shell from './components/Shell';
 import ProfilePage from './pages/ProfilePage';
 import LeaderboardPage from './pages/LeaderboardPage';
 import LoginPage from './pages/LoginPage';
@@ -29,25 +29,23 @@ function AppRoutes() {
         <Route
           path="/"
           element={
-            <>
-              <TopNav />
+            <Shell>
               <Suspense fallback={<PageLoading />}>
                 <MapPage />
               </Suspense>
-            </>
+            </Shell>
           }
         />
-        <Route path="/profile" element={<><TopNav /><ProfilePage /></>} />
-        <Route path="/leaderboard" element={<><TopNav /><LeaderboardPage /></>} />
+        <Route path="/profile" element={<Shell><ProfilePage /></Shell>} />
+        <Route path="/leaderboard" element={<Shell><LeaderboardPage /></Shell>} />
         <Route
           path="/marketplace"
           element={
-            <>
-              <TopNav />
+            <Shell>
               <Suspense fallback={<PageLoading />}>
                 <MarketplacePage />
               </Suspense>
-            </>
+            </Shell>
           }
         />
         <Route path="*" element={<Navigate to="/" replace />} />
