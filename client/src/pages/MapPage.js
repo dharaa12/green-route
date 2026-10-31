@@ -239,9 +239,12 @@ export default function MapPage() {
       </div>
       <EcoImpact route={routes.find(r => r.isGreenest)} />
     </div>
-  ) : !searching ? (
-    // Extra room under it on phones so Safari's floating address bar doesn't cover the text.
-    <div className="mx-4 mt-4 mb-24 flex flex-col items-center justify-center rounded-2xl border border-green-200 bg-green-50 px-6 py-7 text-center lg:mb-4">
+  ) : null;
+
+  // Shown before a search. On phones it sits between the form and the map, where
+  // the eye lands after the form; on laptops it stays under the form in the sidebar.
+  const emptyHint = routes.length === 0 && !searching ? (
+    <div className="mx-4 my-4 flex flex-col items-center justify-center rounded-2xl border border-green-200 bg-green-50 px-6 py-7 text-center">
       <Leaf size={36} className="mb-3 text-green-500" />
       <p className="text-sm font-semibold text-green-800">Search a route to see eco-friendly options and earn climate points</p>
     </div>
@@ -295,7 +298,7 @@ export default function MapPage() {
     return (
       <div className="flex" style={{ height: 'calc(100vh - 56px)' }}>
         <div className="w-80 flex-shrink-0 bg-white border-r border-gray-200 flex flex-col overflow-y-auto">
-          {tripActive ? <ActiveTripPanel ctl={tripCtl} /> : <>{searchPanel}{resultsPanel}</>}
+          {tripActive ? <ActiveTripPanel ctl={tripCtl} /> : <>{searchPanel}{emptyHint}{resultsPanel}</>}
         </div>
         <div className="flex-1">{mapPanel}</div>
       </div>
@@ -305,6 +308,7 @@ export default function MapPage() {
   return (
     <div className="flex flex-col">
       {tripActive ? <ActiveTripPanel ctl={tripCtl} /> : searchPanel}
+      {!tripActive && emptyHint}
       <div className="h-[42vh] flex-shrink-0">{mapPanel}</div>
       {!tripActive && resultsPanel}
     </div>
