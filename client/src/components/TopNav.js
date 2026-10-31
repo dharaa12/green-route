@@ -23,7 +23,9 @@ export default function TopNav() {
     <header className="relative z-50 grid h-14 grid-cols-[1fr_auto] items-center border-b border-gray-200 bg-white px-3 shadow-sm sm:px-4 lg:grid-cols-[1fr_auto_1fr]">
       {/* Wordmark */}
       <Link to="/" className="flex items-center gap-2 justify-self-start">
-        <Leaf size={24} className="flex-shrink-0 text-green-600" />
+        <div className="flex-shrink-0 rounded-lg bg-green-600 p-1.5 text-white">
+          <Leaf size={18} />
+        </div>
         <div>
           <p className="text-base font-bold leading-tight text-gray-900">GreenRoute</p>
           <p className="hidden text-[11px] leading-tight text-gray-400 lg:block">Multi-modal · Carbon-aware</p>
