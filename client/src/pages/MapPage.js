@@ -240,9 +240,10 @@ export default function MapPage() {
       <EcoImpact route={routes.find(r => r.isGreenest)} />
     </div>
   ) : !searching ? (
-    <div className="flex flex-col items-center justify-center p-8 text-center text-gray-400">
-      <Leaf size={36} className="mb-3 text-green-200" />
-      <p className="text-sm font-medium text-gray-500">Search a route to see eco-friendly options and earn climate points</p>
+    // Extra room under it on phones so Safari's floating address bar doesn't cover the text.
+    <div className="mx-4 mt-4 mb-24 flex flex-col items-center justify-center rounded-2xl border border-green-200 bg-green-50 px-6 py-7 text-center lg:mb-4">
+      <Leaf size={36} className="mb-3 text-green-500" />
+      <p className="text-sm font-semibold text-green-800">Search a route to see eco-friendly options and earn climate points</p>
     </div>
   ) : null;
 
