@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { MapContainer, Polyline, Marker, useMap } from 'react-leaflet';
+import { MapContainer, Polyline, Marker, ZoomControl, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import BaseMap from '../components/BaseMap';
-import { Search, Leaf, MapPin, LocateFixed } from 'lucide-react';
+import { Search, Circle, MapPin, LocateFixed } from 'lucide-react';
 import { fetchAllRoutes, annotateRoutes } from '../utils/routing';
 import { getUserCoord, reverseGeocode } from '../utils/geo';
 import { useApp } from '../context/AppContext';
@@ -37,6 +37,18 @@ function FitBounds({ routes, paused }) {
       .filter(p => Array.isArray(p) && p.length === 2 && Number.isFinite(p[0]) && Number.isFinite(p[1]));
     if (pts.length >= 2) map.fitBounds(pts, { padding: [50, 50], maxZoom: 15 });
   }, [routes, map, paused]);
+  return null;
+}
+
+// The map's size follows the layout around it (the search panel grows and
+// shrinks), and Leaflet only notices window resizes, so tell it when its box changes.
+function ResizeWatcher() {
+  const map = useMap();
+  useEffect(() => {
+    const observer = new ResizeObserver(() => map.invalidateSize());
+    observer.observe(map.getContainer());
+    return () => observer.disconnect();
+  }, [map]);
   return null;
 }
 
@@ -178,40 +190,52 @@ export default function MapPage() {
 
   const searchPanel = (
     <div className="p-4 border-b border-gray-100 bg-white">
-      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Route</p>
-      <form onSubmit={handleSearch} className="space-y-2">
-        <LocationInput
-          value={from.label}
-          onChange={(label, coord) => setFrom({ label, coord: coord || null })}
-          placeholder="From — address, place, or station"
-          icon={MapPin}
-          color="#22c55e"
-        />
-        <button
-          type="button"
-          onClick={() => locateMe({ refresh: true })}
-          disabled={locating}
-          className="flex items-center gap-1.5 text-xs font-medium text-green-600 hover:text-green-700 disabled:opacity-50 ml-1"
-        >
-          <LocateFixed size={12} />
-          {locating ? 'Locating…' : 'Use my current location'}
-        </button>
-        <div className="w-px h-3 bg-gray-200 ml-4" />
-        <LocationInput
-          value={to.label}
-          onChange={(label, coord) => setTo({ label, coord: coord || null })}
-          placeholder="To — address, place, or station"
-          icon={MapPin}
-          color="#ef4444"
-        />
+      <h2 className="mb-4 hidden text-xl font-semibold text-gray-900 lg:block">Plan a route</h2>
+      <form onSubmit={handleSearch} className="space-y-3">
+        <div className="rounded-2xl border border-gray-200 bg-gray-50 transition-colors focus-within:border-green-400 focus-within:bg-white focus-within:ring-2 focus-within:ring-green-200">
+          <LocationInput
+            variant="card"
+            label="From"
+            value={from.label}
+            onChange={(label, coord) => setFrom({ label, coord: coord || null })}
+            placeholder="Starting point"
+            icon={Circle}
+            color="#16a34a"
+            trailing={
+              <button
+                type="button"
+                onClick={() => locateMe({ refresh: true })}
+                disabled={locating}
+                aria-label="Use my current location"
+                title="Use my current location"
+                className="flex-shrink-0 rounded-full p-1.5 text-green-600 hover:bg-green-50 hover:text-green-700 disabled:opacity-60"
+              >
+                <LocateFixed size={18} className={locating ? 'animate-pulse' : ''} />
+              </button>
+            }
+          />
+          <div className="mx-4 border-t border-gray-200" />
+          <LocationInput
+            variant="card"
+            label="To"
+            value={to.label}
+            onChange={(label, coord) => setTo({ label, coord: coord || null })}
+            placeholder="Destination"
+            icon={MapPin}
+            color="#15803d"
+          />
+        </div>
         <button
           type="submit"
           disabled={searching || !from.label || !to.label}
-          className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2.5 rounded-xl text-sm disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-green-600 py-3 text-sm font-semibold text-white transition-colors hover:bg-green-700 disabled:bg-green-100 disabled:text-green-700/60"
         >
           <Search size={14} />
           {searching ? 'Finding routes…' : 'Get Routes'}
         </button>
+        {routes.length === 0 && (
+          <p className="text-center text-xs text-gray-500">Choose a greener route. Earn climate points.</p>
+        )}
       </form>
       {error && <p className="text-red-500 text-xs mt-2">{error}</p>}
     </div>
@@ -241,18 +265,11 @@ export default function MapPage() {
     </div>
   ) : null;
 
-  // Shown before a search. On phones it sits between the form and the map, where
-  // the eye lands after the form; on laptops it stays under the form in the sidebar.
-  const emptyHint = routes.length === 0 && !searching ? (
-    <div className="mx-4 my-4 flex flex-col items-center justify-center rounded-2xl border border-green-200 bg-green-50 px-6 py-7 text-center">
-      <Leaf size={36} className="mb-3 text-green-500" />
-      <p className="text-sm font-semibold text-green-800">Search a route to see eco-friendly options and earn climate points</p>
-    </div>
-  ) : null;
-
   const mapPanel = (
     <div className="relative h-full w-full">
-      <MapContainer center={[40.7128, -74.006]} zoom={12} className="w-full h-full" zoomControl>
+      <MapContainer center={[40.7128, -74.006]} zoom={12} className="w-full h-full" zoomControl={false}>
+        <ZoomControl position="topright" />
+        <ResizeWatcher />
         <BaseMap />
         {!tripActive && routes.map(route => (
           <Polyline
@@ -275,7 +292,7 @@ export default function MapPage() {
       </MapContainer>
 
       {routes.length > 0 && !tripActive && (
-        <div className="absolute top-3 right-3 bg-white rounded-xl shadow-md p-2.5 z-[1000]">
+        <div className="absolute top-3 left-3 bg-white rounded-xl shadow-md p-2.5 z-[1000]">
           <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Mode</p>
           {routes.map(r => (
             <div key={r.id} className="flex items-center gap-2 text-xs text-gray-600 mb-1 last:mb-0">
@@ -298,7 +315,7 @@ export default function MapPage() {
     return (
       <div className="flex" style={{ height: 'calc(100vh - 56px)' }}>
         <div className="w-80 flex-shrink-0 bg-white border-r border-gray-200 flex flex-col overflow-y-auto">
-          {tripActive ? <ActiveTripPanel ctl={tripCtl} /> : <>{searchPanel}{emptyHint}{resultsPanel}</>}
+          {tripActive ? <ActiveTripPanel ctl={tripCtl} /> : <>{searchPanel}{resultsPanel}</>}
         </div>
         <div className="flex-1">{mapPanel}</div>
       </div>
@@ -306,10 +323,13 @@ export default function MapPage() {
   }
 
   return (
-    <div className="flex flex-col">
+    // 56px is the top bar. The map takes whatever height the panel above it
+    // leaves, and never less than 42vh once results push the page past one screen.
+    <div className="flex min-h-[calc(100dvh-56px)] flex-col">
       {tripActive ? <ActiveTripPanel ctl={tripCtl} /> : searchPanel}
-      {!tripActive && emptyHint}
-      <div className="h-[42vh] flex-shrink-0">{mapPanel}</div>
+      <div className="relative min-h-[42vh] flex-1">
+        <div className="absolute inset-0">{mapPanel}</div>
+      </div>
       {!tripActive && resultsPanel}
     </div>
   );

@@ -16,7 +16,11 @@ function formatSuggestion(item) {
   return [...new Set(parts)].join(', ') || item.display_name.split(',').slice(0, 3).join(',');
 }
 
-export default function LocationInput({ value, onChange, placeholder, icon: Icon, color }) {
+// variant "card" is one row of a shared From/To card: a small label above the
+// text, no border of its own, and an optional control on the right.
+export default function LocationInput({
+  value, onChange, placeholder, icon: Icon, color, variant = 'field', label, trailing,
+}) {
   const [query, setQuery] = useState(value || '');
   const [suggestions, setSuggestions] = useState([]);
   const [open, setOpen] = useState(false);
@@ -91,29 +95,58 @@ export default function LocationInput({ value, onChange, placeholder, icon: Icon
     setOpen(false);
   }
 
+  const card = variant === 'card';
+
+  const clearButton = query && (
+    <button
+      type="button"
+      onClick={handleClear}
+      aria-label="Clear"
+      className={card
+        ? 'flex-shrink-0 p-1 text-gray-400 hover:text-gray-600'
+        : 'absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600'}
+    >
+      <X size={13} />
+    </button>
+  );
+
+  const input = (
+    <input
+      value={query}
+      onChange={handleChange}
+      onFocus={() => suggestions.length > 0 && setOpen(true)}
+      placeholder={placeholder}
+      className={card
+        ? 'w-full truncate bg-transparent p-0 text-base text-gray-900 placeholder-gray-400 focus:outline-none'
+        : 'w-full border border-gray-200 rounded-xl pl-8 pr-8 py-2.5 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-green-400 bg-gray-50 focus:bg-white transition-colors'}
+    />
+  );
+
   return (
     <div ref={containerRef} className="relative">
-      <div className="relative flex items-center">
-        <span className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color }}>
-          <Icon size={14} />
-        </span>
-        <input
-          value={query}
-          onChange={handleChange}
-          onFocus={() => suggestions.length > 0 && setOpen(true)}
-          placeholder={placeholder}
-          className="w-full border border-gray-200 rounded-xl pl-8 pr-8 py-2.5 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-green-400 bg-gray-50 focus:bg-white transition-colors"
-        />
-        {query && (
-          <button
-            type="button"
-            onClick={handleClear}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-          >
-            <X size={13} />
-          </button>
-        )}
-      </div>
+      {card ? (
+        <div className="group flex items-center gap-3 px-4 py-2.5">
+          <span className="flex-shrink-0" style={{ color }}>
+            <Icon size={16} />
+          </span>
+          <label className="min-w-0 flex-1">
+            <span className="block text-[10px] font-semibold uppercase tracking-wider text-gray-500 group-focus-within:text-green-700">
+              {label}
+            </span>
+            {input}
+          </label>
+          {clearButton}
+          {trailing}
+        </div>
+      ) : (
+        <div className="relative flex items-center">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color }}>
+            <Icon size={14} />
+          </span>
+          {input}
+          {clearButton}
+        </div>
+      )}
 
       {loading && query && !open && (
         <div className="absolute z-[2000] left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl px-4 py-3 text-sm text-gray-400">

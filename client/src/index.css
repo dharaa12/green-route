@@ -2,6 +2,25 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Map zoom buttons: one soft white card instead of Leaflet's bordered grey boxes.
+   index.css loads before leaflet.css, so these selectors are made more specific. */
+div.leaflet-container .leaflet-bar {
+  border: 0;
+  border-radius: 12px;
+  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.18);
+  overflow: hidden;
+}
+div.leaflet-container .leaflet-bar a {
+  width: 40px;
+  height: 40px;
+  line-height: 40px;
+  color: #374151;
+  border-bottom: 1px solid #e5e7eb;
+}
+div.leaflet-container .leaflet-bar a:last-child {
+  border-bottom: 0;
+}
+
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
