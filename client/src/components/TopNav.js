@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Route, Gift, Trophy, Leaf, Sprout, LogOut } from 'lucide-react';
+import { Route, Gift, Trophy, Leaf, LogOut } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
 // Laptop navigation. On phones the same links are in the bottom tab bar.
@@ -58,12 +58,8 @@ export default function TopNav() {
       <div className="flex flex-shrink-0 items-center gap-2 justify-self-end sm:gap-3">
         {session && profile ? (
           <>
-            <span className="flex items-center gap-2 rounded-full bg-green-100 px-3 py-1 text-green-700">
-              <Sprout size={18} className="flex-shrink-0" />
-              <span className="leading-none">
-                <span className="block text-base font-bold">{profile.climate_points}</span>
-                <span className="block text-[10px] font-medium">climate points</span>
-              </span>
+            <span className="flex items-center gap-1 rounded-full bg-green-100 px-2 py-1 text-xs font-semibold text-green-700">
+              <Leaf size={11} /> {profile.climate_points}<span className="hidden sm:inline">&nbsp;pts</span>
             </span>
             <Link
               to="/profile"
